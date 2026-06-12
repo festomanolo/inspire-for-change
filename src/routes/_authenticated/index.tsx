@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEvents } from "@/hooks/use-events";
 import type { Guest, GuestEdit, Profile } from "@/lib/types";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({ meta: [{ title: "Dashboard — Inspired for Change" }] }),
@@ -49,7 +50,14 @@ function Dashboard() {
 
     const channel = supabase
       .channel("dashboard-" + selected.id)
-      .on("postgres_changes", { event: "*", schema: "public", table: "guests" }, load)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "guests" }, (payload) => {
+        const newGuest = payload.new as Guest;
+        if (newGuest.event_id === selected.id) {
+          toast.success(`New registration: ${newGuest.first_name} ${newGuest.last_name}`);
+          load();
+        }
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "guests" }, load)
       .on("postgres_changes", { event: "*", schema: "public", table: "guest_edits" }, load)
       .subscribe();
 
@@ -64,6 +72,9 @@ function Dashboard() {
   const total = guests.length;
   const campers = guests.filter((g) => g.status === "camping").length;
   const notCampers = total - campers;
+  const day1 = guests.filter((g) => g.day === 1).length;
+  const day2 = guests.filter((g) => g.day === 2).length;
+  const day3 = guests.filter((g) => g.day === 3).length;
   const recent = guests.slice(0, 5);
 
   return (
@@ -77,6 +88,12 @@ function Dashboard() {
         <StatCard label="Total guests" value={total} />
         <StatCard label="Camping" value={campers} accent />
         <StatCard label="Not camping" value={notCampers} />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard label="Day 1" value={day1} />
+        <StatCard label="Day 2" value={day2} />
+        <StatCard label="Day 3" value={day3} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -155,8 +172,8 @@ function Dashboard() {
 
 function StatCard({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
-    <div className={`surface-card p-6 ${accent ? "bg-accent text-accent-foreground border-accent" : ""}`}>
-      <div className={`text-sm ${accent ? "opacity-80" : "text-muted-foreground"}`}>{label}</div>
+    <div className={`surface-card p-6 ${accent ? "bg-accent/10 border-accent/30" : ""}`}>
+      <div className="text-sm text-muted-foreground">{label}</div>
       <div className="text-4xl font-display font-semibold mt-2 tabular-nums">{value}</div>
     </div>
   );

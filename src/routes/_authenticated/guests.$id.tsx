@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import type { Guest, GuestEdit, Profile } from "@/lib/types";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/guests/$id")({
   head: () => ({ meta: [{ title: "Guest — Inspired for Change" }] }),
@@ -42,7 +43,11 @@ function GuestDetail() {
     load();
     const channel = supabase
       .channel("guest-" + id)
-      .on("postgres_changes", { event: "*", schema: "public", table: "guests", filter: `id=eq.${id}` }, load)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "guests", filter: `id=eq.${id}` }, (payload) => {
+        const updated = payload.new as Guest;
+        toast.info(`This guest was just updated by another registrar`);
+        load();
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "guest_edits", filter: `guest_id=eq.${id}` }, load)
       .subscribe();
     return () => {
@@ -64,6 +69,7 @@ function GuestDetail() {
         origin: form.origin,
         phone: form.phone,
         status: form.status,
+        day: form.day,
         updated_by: user.id,
       })
       .eq("id", guest.id)
@@ -74,6 +80,7 @@ function GuestDetail() {
       return;
     }
     setEditing(false);
+    toast.success("Guest information updated successfully");
     await load();
   };
 
@@ -162,6 +169,19 @@ function GuestDetail() {
             <Input label="Origin" value={form.origin ?? ""} onChange={(v) => setForm({ ...form, origin: v })} />
             <Input label="Phone" value={form.phone ?? ""} onChange={(v) => setForm({ ...form, phone: v })} />
             <div>
+              <label className="block text-sm font-medium mb-2">Day</label>
+              <select
+                value={form.day ?? ""}
+                onChange={(e) => setForm({ ...form, day: e.target.value ? parseInt(e.target.value) : null })}
+                className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">Not specified</option>
+                <option value="1">Day 1</option>
+                <option value="2">Day 2</option>
+                <option value="3">Day 3</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-medium mb-2">Status</label>
               <div className="grid grid-cols-2 gap-3">
                 {(["camping", "not_camping"] as const).map((s) => (
@@ -188,6 +208,8 @@ function GuestDetail() {
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
             <Detail label="Phone" value={guest.phone} />
             <Detail label="Origin" value={guest.origin} />
+            <Detail label="Day" value={guest.day ? `Day ${guest.day}` : "Not specified"} />
+            <Detail label="Status" value={guest.status === "camping" ? "Camping" : "Not camping"} />
             <Detail label="Registered" value={new Date(guest.created_at).toLocaleString()} />
             <Detail label="Last updated" value={new Date(guest.updated_at).toLocaleString()} />
           </dl>
