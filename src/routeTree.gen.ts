@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedRegisterRouteImport } from './routes/_authenticated/register'
 import { Route as AuthenticatedGuestsRouteImport } from './routes/_authenticated/guests'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as ApiStorageSplatRouteImport } from './routes/api.storage.$'
 import { Route as AuthenticatedGuestsIdRouteImport } from './routes/_authenticated/guests.$id'
 
@@ -41,6 +42,11 @@ const AuthenticatedGuestsRoute = AuthenticatedGuestsRouteImport.update({
   path: '/guests',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ApiStorageSplatRoute = ApiStorageSplatRouteImport.update({
   id: '/api/storage/$',
   path: '/api/storage/$',
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/guests': typeof AuthenticatedGuestsRouteWithChildren
   '/register': typeof AuthenticatedRegisterRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/api/storage/$': typeof ApiStorageSplatRoute
 }
@@ -64,6 +71,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/guests': typeof AuthenticatedGuestsRouteWithChildren
   '/register': typeof AuthenticatedRegisterRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/': typeof AuthenticatedIndexRoute
   '/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/api/storage/$': typeof ApiStorageSplatRoute
@@ -74,6 +82,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/guests': typeof AuthenticatedGuestsRouteWithChildren
   '/_authenticated/register': typeof AuthenticatedRegisterRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/api/storage/$': typeof ApiStorageSplatRoute
@@ -85,16 +94,18 @@ export interface FileRouteTypes {
     | '/auth'
     | '/guests'
     | '/register'
+    | '/admin'
     | '/guests/$id'
     | '/api/storage/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/guests' | '/register' | '/' | '/guests/$id' | '/api/storage/$'
+  to: '/auth' | '/guests' | '/register' | '/admin' | '/' | '/guests/$id' | '/api/storage/$'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/guests'
     | '/_authenticated/register'
+    | '/_authenticated/admin'
     | '/_authenticated/'
     | '/_authenticated/guests/$id'
     | '/api/storage/$'
@@ -143,6 +154,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGuestsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/storage/$': {
       id: '/api/storage/$'
       path: '/api/storage/$'
@@ -174,12 +192,14 @@ const AuthenticatedGuestsRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedGuestsRoute: typeof AuthenticatedGuestsRouteWithChildren
   AuthenticatedRegisterRoute: typeof AuthenticatedRegisterRoute
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedGuestsRoute: AuthenticatedGuestsRouteWithChildren,
   AuthenticatedRegisterRoute: AuthenticatedRegisterRoute,
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 

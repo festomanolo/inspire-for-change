@@ -1,12 +1,13 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-display: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -38,80 +39,83 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --shadow-soft: 0 1px 2px 0 oklch(0 0 0 / 0.04), 0 1px 3px 0 oklch(0 0 0 / 0.04);
-  --shadow-elevated: 0 4px 16px -2px oklch(0 0 0 / 0.06), 0 2px 6px -1px oklch(0 0 0 / 0.04);
-  --shadow-float: 0 24px 48px -12px oklch(0 0 0 / 0.12), 0 8px 16px -4px oklch(0 0 0 / 0.06);
+  --shadow-soft: 0 1px 3px 0 oklch(0 0 0 / 0.05), 0 1px 2px -1px oklch(0 0 0 / 0.04);
+  --shadow-elevated: 0 4px 20px -4px oklch(0 0 0 / 0.08), 0 2px 8px -2px oklch(0 0 0 / 0.05);
+  --shadow-float: 0 24px 48px -12px oklch(0 0 0 / 0.14), 0 8px 16px -4px oklch(0 0 0 / 0.07);
+  --shadow-glow: 0 0 0 1px oklch(0.62 0.18 252 / 0.15), 0 4px 20px -4px oklch(0.62 0.18 252 / 0.2);
 }
 
 :root {
   --radius: 0.875rem;
 
-  --background: oklch(0.99 0.002 250);
-  --foreground: oklch(0.18 0.01 250);
-  --surface: oklch(0.97 0.003 250);
+  --background: oklch(0.985 0.002 250);
+  --foreground: oklch(0.16 0.015 250);
+  --surface: oklch(0.975 0.003 250);
 
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.01 250);
+  --card-foreground: oklch(0.16 0.015 250);
 
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.01 250);
+  --popover-foreground: oklch(0.16 0.015 250);
 
-  --primary: oklch(0.22 0.012 250);
+  --primary: oklch(0.28 0.06 255);
   --primary-foreground: oklch(0.99 0 0);
 
-  --secondary: oklch(0.96 0.005 250);
-  --secondary-foreground: oklch(0.22 0.012 250);
+  --secondary: oklch(0.955 0.006 250);
+  --secondary-foreground: oklch(0.28 0.06 255);
 
-  --muted: oklch(0.96 0.005 250);
-  --muted-foreground: oklch(0.52 0.015 250);
+  --muted: oklch(0.955 0.006 250);
+  --muted-foreground: oklch(0.52 0.018 250);
 
-  --accent: oklch(0.62 0.18 252);
+  --accent: oklch(0.55 0.22 258);
   --accent-foreground: oklch(0.99 0 0);
 
-  --destructive: oklch(0.6 0.21 27);
+  --destructive: oklch(0.58 0.22 27);
   --destructive-foreground: oklch(0.99 0 0);
 
-  --success: oklch(0.66 0.16 150);
+  --success: oklch(0.62 0.18 150);
   --success-foreground: oklch(0.99 0 0);
 
-  --border: oklch(0.92 0.005 250);
-  --input: oklch(0.94 0.005 250);
-  --ring: oklch(0.62 0.18 252);
+  --border: oklch(0.91 0.006 250);
+  --input: oklch(0.965 0.004 250);
+  --ring: oklch(0.55 0.22 258);
 }
 
 .dark {
-  --background: oklch(0.14 0.01 250);
+  --background: oklch(0.12 0.012 250);
   --foreground: oklch(0.97 0.003 250);
-  --surface: oklch(0.18 0.01 250);
-  --card: oklch(0.2 0.01 250);
+  --surface: oklch(0.16 0.012 250);
+  --card: oklch(0.18 0.012 250);
   --card-foreground: oklch(0.97 0.003 250);
-  --popover: oklch(0.2 0.01 250);
+  --popover: oklch(0.18 0.012 250);
   --popover-foreground: oklch(0.97 0.003 250);
   --primary: oklch(0.97 0.003 250);
-  --primary-foreground: oklch(0.18 0.01 250);
-  --secondary: oklch(0.24 0.01 250);
+  --primary-foreground: oklch(0.16 0.012 250);
+  --secondary: oklch(0.22 0.012 250);
   --secondary-foreground: oklch(0.97 0.003 250);
-  --muted: oklch(0.24 0.01 250);
-  --muted-foreground: oklch(0.65 0.012 250);
-  --accent: oklch(0.7 0.16 252);
-  --accent-foreground: oklch(0.14 0.01 250);
-  --destructive: oklch(0.7 0.19 27);
-  --destructive-foreground: oklch(0.14 0.01 250);
-  --success: oklch(0.72 0.15 150);
-  --success-foreground: oklch(0.14 0.01 250);
+  --muted: oklch(0.22 0.012 250);
+  --muted-foreground: oklch(0.62 0.014 250);
+  --accent: oklch(0.65 0.2 258);
+  --accent-foreground: oklch(0.12 0.012 250);
+  --destructive: oklch(0.68 0.2 27);
+  --destructive-foreground: oklch(0.12 0.012 250);
+  --success: oklch(0.7 0.16 150);
+  --success-foreground: oklch(0.12 0.012 250);
   --border: oklch(1 0 0 / 0.08);
-  --input: oklch(1 0 0 / 0.1);
-  --ring: oklch(0.7 0.16 252);
+  --input: oklch(1 0 0 / 0.09);
+  --ring: oklch(0.65 0.2 258);
 }
 
 @layer base {
   * {
     border-color: var(--color-border);
+    box-sizing: border-box;
   }
   html, body {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
   }
   body {
     background-color: var(--color-background);
@@ -120,9 +124,12 @@
   }
   h1, h2, h3, h4 {
     font-family: var(--font-display);
-    letter-spacing: -0.025em;
+    letter-spacing: -0.03em;
     font-weight: 600;
+    line-height: 1.2;
   }
+  h1 { font-size: clamp(1.75rem, 5vw, 2.5rem); }
+  h2 { font-size: clamp(1.1rem, 3vw, 1.35rem); }
 }
 
 @layer utilities {
@@ -138,14 +145,105 @@
     border-radius: var(--radius-2xl);
     box-shadow: var(--shadow-elevated);
   }
-  .fade-in {
-    animation: fadeIn 0.35s ease-out both;
+  .surface-glass {
+    background-color: oklch(1 0 0 / 0.7);
+    backdrop-filter: blur(16px) saturate(1.6);
+    -webkit-backdrop-filter: blur(16px) saturate(1.6);
+    border: 1px solid oklch(1 0 0 / 0.5);
+    border-radius: var(--radius-2xl);
   }
+  .dark .surface-glass {
+    background-color: oklch(0.18 0.012 250 / 0.75);
+    border: 1px solid oklch(1 0 0 / 0.08);
+  }
+
+  /* Micro-animations */
+  .fade-in {
+    animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .slide-up {
+    animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .scale-in {
+    animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+  .stagger-6 { animation-delay: 0.3s; }
+
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(4px); }
+    from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes pulse-ring {
+    0%, 100% { box-shadow: 0 0 0 0 oklch(0.55 0.22 258 / 0.3); }
+    50% { box-shadow: 0 0 0 6px oklch(0.55 0.22 258 / 0); }
+  }
+
+  /* Gradient accent text */
+  .text-gradient {
+    background: linear-gradient(135deg, oklch(0.55 0.22 258), oklch(0.65 0.2 290));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Better focus ring */
+  .focus-ring:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-ring);
+  }
+
+  /* Stat card accent */
+  .stat-accent {
+    background: linear-gradient(135deg, oklch(0.55 0.22 258 / 0.08), oklch(0.65 0.2 290 / 0.04));
+    border-color: oklch(0.55 0.22 258 / 0.2);
+  }
+
+  /* Input shimmer on focus */
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px oklch(0.55 0.22 258 / 0.12);
+  }
+
+  /* Mobile safe area padding */
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  .pt-safe {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+  }
+
+  /* Bottom nav height spacer on mobile */
+  .mobile-nav-spacer {
+    height: 5rem;
+  }
 }
+
+/* Smooth hover transitions for interactive elements */
+button, a, [role="button"] {
+  transition: opacity 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+button:active:not(:disabled), [role="button"]:active {
+  transform: scale(0.98);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-muted-foreground); }
 
 @media print {
   body { background: white; color: black; }

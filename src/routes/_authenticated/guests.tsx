@@ -93,13 +93,10 @@ function GuestsPage() {
   const exportCsv = async () => {
     try {
       await exportGuestsToCSV(selected?.id);
-    } catch (error) {
-      console.error("Error exporting CSV:", error);
+    } catch {
       alert("Failed to export CSV. Please try again.");
     }
   };
-
-  const printList = () => window.print();
 
   const startEdit = (guest: Guest) => {
     setEditingId(guest.id);
@@ -113,7 +110,6 @@ function GuestsPage() {
 
   const saveEdit = async () => {
     if (!editingId || !user) return;
-    
     const { error: err } = await supabase
       .from("guests")
       .update({
@@ -127,12 +123,8 @@ function GuestsPage() {
         updated_by: user.id,
       })
       .eq("id", editingId);
-    
-    if (err) {
-      toast.error("Failed to update guest");
-      return;
-    }
-    
+
+    if (err) { toast.error("Failed to update guest"); return; }
     toast.success("Guest updated successfully");
     setEditingId(null);
     setEditForm({});
@@ -140,199 +132,184 @@ function GuestsPage() {
 
   const deleteGuest = async (guest: Guest) => {
     if (!confirm(`Delete ${guest.first_name} ${guest.last_name}? This cannot be undone.`)) return;
-    
-    const { error: err } = await supabase
-      .from("guests")
-      .delete()
-      .eq("id", guest.id);
-    
-    if (err) {
-      toast.error("Failed to delete guest");
-      return;
-    }
-    
-    toast.success("Guest deleted successfully");
+    const { error: err } = await supabase.from("guests").delete().eq("id", guest.id);
+    if (err) { toast.error("Failed to delete guest"); return; }
+    toast.success("Guest deleted");
+  };
+
+  const inputCls: React.CSSProperties = {
+    width: "100%", padding: "7px 10px", borderRadius: "8px",
+    background: "var(--color-input)", border: "1.5px solid var(--color-border)",
+    fontSize: "0.82rem", color: "var(--color-foreground)",
   };
 
   return (
-    <div>
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 no-print">
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      {/* Header */}
+      <div className="no-print slide-up" style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: "12px" }}>
         <div>
-          <p className="text-sm text-muted-foreground">{selected?.name}</p>
-          <h1 className="text-4xl mt-1">Guests</h1>
+          <p style={{ fontSize: "0.8rem", color: "var(--color-muted-foreground)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            {selected?.name}
+          </p>
+          <h1 style={{ marginTop: "2px" }}>Guests</h1>
         </div>
-        <div className="flex gap-3">
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           <button
+            id="export-csv-btn"
             onClick={exportCsv}
-            className="px-5 py-2.5 rounded-full bg-secondary text-secondary-foreground text-sm hover:bg-muted transition-colors"
+            style={{
+              padding: "9px 16px", borderRadius: "9999px", fontSize: "0.82rem",
+              background: "var(--color-secondary)", border: "1.5px solid var(--color-border)",
+              cursor: "pointer", fontWeight: 500, color: "var(--color-foreground)",
+            }}
           >
-            Download CSV
+            ↓ CSV
           </button>
           <button
-            onClick={printList}
-            className="px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm hover:opacity-90 transition-opacity"
+            id="print-btn"
+            onClick={() => window.print()}
+            style={{
+              padding: "9px 16px", borderRadius: "9999px", fontSize: "0.82rem",
+              background: "linear-gradient(135deg, oklch(0.28 0.06 255), oklch(0.55 0.22 258))",
+              border: "none", cursor: "pointer", fontWeight: 600, color: "white",
+            }}
           >
-            Print
+            🖨 Print
           </button>
         </div>
       </div>
 
-      <div className="surface-card p-2 mb-5 no-print flex flex-col md:flex-row gap-2">
+      {/* Search & filters */}
+      <div className="no-print surface-card" style={{ padding: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
         <input
+          id="guests-search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name, origin, or phone"
-          className="flex-1 px-4 py-2.5 rounded-xl bg-transparent focus:outline-none"
+          placeholder="🔍  Search by name, origin, or phone…"
+          style={{
+            width: "100%", padding: "10px 14px", borderRadius: "12px",
+            background: "var(--color-input)", border: "1.5px solid var(--color-border)",
+            fontSize: "0.88rem", color: "var(--color-foreground)",
+          }}
         />
-        <div className="flex gap-1 rounded-xl bg-secondary p-1">
-          {(["all", "camping", "not_camping"] as Filter[]).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-lg text-sm transition-all ${
-                filter === f ? "bg-card shadow-soft" : "text-muted-foreground"
-              }`}
-            >
-              {f === "all" ? "All" : f === "camping" ? "Camping" : "Not camping"}
-            </button>
-          ))}
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          {/* Status filter pills */}
+          <div style={{ display: "flex", gap: "4px", background: "var(--color-secondary)", borderRadius: "10px", padding: "3px" }}>
+            {(["all", "camping", "not_camping"] as Filter[]).map((f) => (
+              <button
+                key={f}
+                id={`filter-${f}`}
+                onClick={() => setFilter(f)}
+                style={{
+                  padding: "6px 12px", borderRadius: "8px", fontSize: "0.78rem",
+                  border: "none", cursor: "pointer", fontWeight: filter === f ? 600 : 400,
+                  background: filter === f ? "var(--color-card)" : "transparent",
+                  color: filter === f ? "var(--color-foreground)" : "var(--color-muted-foreground)",
+                  boxShadow: filter === f ? "var(--shadow-soft)" : "none",
+                  transition: "all 0.15s ease", whiteSpace: "nowrap",
+                }}
+              >
+                {f === "all" ? "All" : f === "camping" ? "⛺ Camping" : "☀️ Day visitors"}
+              </button>
+            ))}
+          </div>
+          {/* Sort */}
+          <select
+            id="guests-sort"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as Sort)}
+            style={{
+              padding: "6px 12px", borderRadius: "10px", fontSize: "0.78rem",
+              background: "var(--color-secondary)", border: "1.5px solid var(--color-border)",
+              cursor: "pointer", color: "var(--color-foreground)", fontWeight: 500,
+            }}
+          >
+            <option value="newest">Newest first</option>
+            <option value="name">A → Z</option>
+          </select>
         </div>
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as Sort)}
-          className="px-4 py-2.5 rounded-xl bg-secondary text-sm border-0 focus:outline-none cursor-pointer"
-        >
-          <option value="newest">Newest first</option>
-          <option value="name">By name</option>
-        </select>
       </div>
 
-      <div className="surface-card overflow-hidden">
-        <div className="hidden md:grid grid-cols-12 px-6 py-3 text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
-          <div className="col-span-3">Name</div>
-          <div className="col-span-2">Origin</div>
-          <div className="col-span-2">Phone</div>
-          <div className="col-span-1">Day</div>
-          <div className="col-span-2">Status</div>
-          <div className="col-span-2 text-right">Actions</div>
+      {/* Table — desktop */}
+      <div className="surface-card hidden md:block" style={{ overflow: "hidden" }}>
+        <div style={{
+          display: "grid", gridTemplateColumns: "3fr 2fr 2fr 60px 130px 110px",
+          padding: "10px 20px", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase",
+          letterSpacing: "0.07em", color: "var(--color-muted-foreground)",
+          borderBottom: "1px solid var(--color-border)", background: "var(--color-secondary)",
+        }}>
+          <div>Name</div><div>Origin</div><div>Phone</div><div>Day</div><div>Status</div><div style={{ textAlign: "right" }}>Actions</div>
         </div>
+
         {loading ? (
-          <div className="py-16 text-center text-muted-foreground">Loading…</div>
+          <div style={{ padding: "60px", textAlign: "center", color: "var(--color-muted-foreground)" }}>Loading…</div>
         ) : filtered.length === 0 ? (
-          <div className="py-16 text-center text-muted-foreground">No guests found.</div>
+          <div style={{ padding: "60px", textAlign: "center", color: "var(--color-muted-foreground)" }}>No guests found.</div>
         ) : (
-          <ul>
+          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
             {filtered.map((g) => (
-              <li key={g.id} className="border-b border-border last:border-0">
+              <li key={g.id} style={{ borderBottom: "1px solid var(--color-border)" }}>
                 {editingId === g.id ? (
-                  <div className="grid grid-cols-1 md:grid-cols-12 px-6 py-4 gap-2 items-center bg-accent/5">
-                    <div className="col-span-3">
-                      <input
-                        value={editForm.first_name || ""}
-                        onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
-                        className="w-full px-2 py-1 rounded border border-border bg-input text-sm"
-                        placeholder="First name"
-                      />
-                      <input
-                        value={editForm.last_name || ""}
-                        onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
-                        className="w-full px-2 py-1 rounded border border-border bg-input text-sm mt-1"
-                        placeholder="Last name"
-                      />
+                  <div style={{
+                    display: "grid", gridTemplateColumns: "3fr 2fr 2fr 60px 130px 110px",
+                    padding: "12px 20px", gap: "8px", alignItems: "center",
+                    background: "oklch(0.55 0.22 258 / 0.04)",
+                  }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <input value={editForm.first_name || ""} onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })} style={inputCls} placeholder="First name" />
+                      <input value={editForm.last_name || ""} onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })} style={inputCls} placeholder="Last name" />
                     </div>
-                    <div className="col-span-2">
-                      <input
-                        value={editForm.origin || ""}
-                        onChange={(e) => setEditForm({ ...editForm, origin: e.target.value })}
-                        className="w-full px-2 py-1 rounded border border-border bg-input text-sm"
-                        placeholder="Origin"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <input
-                        value={editForm.phone || ""}
-                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                        className="w-full px-2 py-1 rounded border border-border bg-input text-sm"
-                        placeholder="Phone"
-                      />
-                    </div>
-                    <div className="col-span-1">
-                      <select
-                        value={editForm.day || ""}
-                        onChange={(e) => setEditForm({ ...editForm, day: e.target.value ? parseInt(e.target.value) : null })}
-                        className="w-full px-2 py-1 rounded border border-border bg-input text-sm"
-                      >
-                        <option value="">-</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                      </select>
-                    </div>
-                    <div className="col-span-2">
-                      <select
-                        value={editForm.status || "not_camping"}
-                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value as "camping" | "not_camping" })}
-                        className="w-full px-2 py-1 rounded border border-border bg-input text-sm"
-                      >
-                        <option value="camping">Camping</option>
-                        <option value="not_camping">Not camping</option>
-                      </select>
-                    </div>
-                    <div className="col-span-2 flex gap-2 justify-end">
-                      <button
-                        onClick={saveEdit}
-                        className="px-3 py-1 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={cancelEdit}
-                        className="px-3 py-1 rounded-lg bg-secondary text-secondary-foreground text-sm hover:bg-muted"
-                      >
-                        Cancel
-                      </button>
+                    <input value={editForm.origin || ""} onChange={(e) => setEditForm({ ...editForm, origin: e.target.value })} style={inputCls} placeholder="Origin" />
+                    <input value={editForm.phone || ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={inputCls} placeholder="Phone" />
+                    <select value={editForm.day || ""} onChange={(e) => setEditForm({ ...editForm, day: e.target.value ? parseInt(e.target.value) : null })} style={inputCls}>
+                      <option value="">-</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                    </select>
+                    <select value={editForm.status || "not_camping"} onChange={(e) => setEditForm({ ...editForm, status: e.target.value as "camping" | "not_camping" })} style={inputCls}>
+                      <option value="camping">Camping</option>
+                      <option value="not_camping">Not camping</option>
+                    </select>
+                    <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                      <button onClick={saveEdit} style={{ padding: "6px 12px", borderRadius: "8px", fontSize: "0.78rem", fontWeight: 600, background: "var(--color-primary)", color: "var(--color-primary-foreground)", border: "none", cursor: "pointer" }}>Save</button>
+                      <button onClick={cancelEdit} style={{ padding: "6px 12px", borderRadius: "8px", fontSize: "0.78rem", background: "var(--color-secondary)", border: "none", cursor: "pointer" }}>Cancel</button>
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-12 px-6 py-4 gap-2 items-center hover:bg-secondary/50 transition-colors">
-                    <Link to="/guests/$id" params={{ id: g.id }} className="col-span-3 font-medium hover:text-accent">
+                  <div style={{
+                    display: "grid", gridTemplateColumns: "3fr 2fr 2fr 60px 130px 110px",
+                    padding: "13px 20px", gap: "8px", alignItems: "center",
+                    transition: "background 0.1s ease", cursor: "default",
+                  }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-secondary)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <Link to="/guests/$id" params={{ id: g.id }} style={{ fontWeight: 600, fontSize: "0.88rem", textDecoration: "none", color: "var(--color-foreground)", transition: "color 0.1s" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-accent)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-foreground)")}>
                       {[g.first_name, g.middle_name, g.last_name].filter(Boolean).join(" ")}
                     </Link>
-                    <div className="col-span-2 text-sm text-muted-foreground">{g.origin}</div>
-                    <div className="col-span-2 text-sm text-muted-foreground tabular-nums">{g.phone}</div>
-                    <div className="col-span-1 text-sm">
+                    <div style={{ fontSize: "0.82rem", color: "var(--color-muted-foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.origin}</div>
+                    <div style={{ fontSize: "0.82rem", color: "var(--color-muted-foreground)", fontVariantNumeric: "tabular-nums" }}>{g.phone}</div>
+                    <div>
                       {g.day ? (
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-medium">
-                          {g.day}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
+                        <span style={{ width: "24px", height: "24px", borderRadius: "6px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "oklch(0.55 0.22 258 / 0.1)", color: "var(--color-accent)", fontSize: "0.75rem", fontWeight: 700 }}>{g.day}</span>
+                      ) : <span style={{ color: "var(--color-muted-foreground)" }}>—</span>}
                     </div>
-                    <div className="col-span-2">
-                      <span
-                        className={`text-xs px-3 py-1 rounded-full ${
-                          g.status === "camping"
-                            ? "bg-accent/10 text-accent border border-accent/20"
-                            : "bg-muted text-muted-foreground border border-border"
-                        }`}
-                      >
-                        {g.status === "camping" ? "Camping" : "Not camping"}
+                    <div>
+                      <span style={{
+                        fontSize: "0.72rem", padding: "3px 10px", borderRadius: "9999px", fontWeight: 600,
+                        background: g.status === "camping" ? "oklch(0.55 0.22 258 / 0.1)" : "var(--color-muted)",
+                        color: g.status === "camping" ? "var(--color-accent)" : "var(--color-muted-foreground)",
+                        border: `1px solid ${g.status === "camping" ? "oklch(0.55 0.22 258 / 0.2)" : "var(--color-border)"}`,
+                      }}>
+                        {g.status === "camping" ? "⛺ Camping" : "☀️ Day visitor"}
                       </span>
                     </div>
-                    <div className="col-span-2 flex gap-2 justify-end no-print">
-                      <button
-                        onClick={() => startEdit(g)}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-secondary hover:bg-muted text-foreground transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => deleteGuest(g)}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
-                      >
-                        Delete
-                      </button>
+                    <div style={{ display: "flex", gap: "5px", justifyContent: "flex-end" }} className="no-print">
+                      <button onClick={() => startEdit(g)} style={{ padding: "5px 12px", borderRadius: "8px", fontSize: "0.75rem", background: "var(--color-secondary)", border: "1.5px solid var(--color-border)", cursor: "pointer", fontWeight: 500 }}>Edit</button>
+                      <button onClick={() => deleteGuest(g)} style={{ padding: "5px 12px", borderRadius: "8px", fontSize: "0.75rem", background: "oklch(0.58 0.22 27 / 0.08)", border: "1px solid oklch(0.58 0.22 27 / 0.15)", cursor: "pointer", color: "var(--color-destructive)", fontWeight: 500 }}>Delete</button>
                     </div>
                   </div>
                 )}
@@ -340,9 +317,98 @@ function GuestsPage() {
             ))}
           </ul>
         )}
-        <div className="px-6 py-3 text-xs text-muted-foreground border-t border-border">
-          Showing {filtered.length} of {guests.length}
+        <div style={{ padding: "10px 20px", fontSize: "0.75rem", color: "var(--color-muted-foreground)", borderTop: "1px solid var(--color-border)" }}>
+          Showing {filtered.length} of {guests.length} guests
         </div>
+      </div>
+
+      {/* Mobile card list */}
+      <div className="md:hidden" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+        {loading ? (
+          <div style={{ padding: "60px", textAlign: "center", color: "var(--color-muted-foreground)" }}>Loading…</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: "60px", textAlign: "center", color: "var(--color-muted-foreground)" }}>No guests found.</div>
+        ) : (
+          filtered.map((g, i) => (
+            <div key={g.id} className={`surface-card fade-in stagger-${Math.min(i + 1, 6)}`} style={{ padding: "14px 16px" }}>
+              {editingId === g.id ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                    <input value={editForm.first_name || ""} onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })} style={inputCls} placeholder="First name" />
+                    <input value={editForm.last_name || ""} onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })} style={inputCls} placeholder="Last name" />
+                  </div>
+                  <input value={editForm.origin || ""} onChange={(e) => setEditForm({ ...editForm, origin: e.target.value })} style={inputCls} placeholder="Origin" />
+                  <input value={editForm.phone || ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={inputCls} placeholder="Phone" />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                    <select value={editForm.day || ""} onChange={(e) => setEditForm({ ...editForm, day: e.target.value ? parseInt(e.target.value) : null })} style={inputCls}>
+                      <option value="">No day</option>
+                      <option value="1">Day 1</option>
+                      <option value="2">Day 2</option>
+                      <option value="3">Day 3</option>
+                    </select>
+                    <select value={editForm.status || "not_camping"} onChange={(e) => setEditForm({ ...editForm, status: e.target.value as "camping" | "not_camping" })} style={inputCls}>
+                      <option value="camping">Camping</option>
+                      <option value="not_camping">Not camping</option>
+                    </select>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button onClick={saveEdit} style={{ flex: 1, padding: "9px", borderRadius: "10px", fontSize: "0.85rem", fontWeight: 600, background: "var(--color-primary)", color: "var(--color-primary-foreground)", border: "none", cursor: "pointer" }}>Save</button>
+                    <button onClick={cancelEdit} style={{ flex: 1, padding: "9px", borderRadius: "10px", fontSize: "0.85rem", background: "var(--color-secondary)", border: "none", cursor: "pointer" }}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "10px" }}>
+                    <div style={{ display: "flex", gap: "10px", alignItems: "center", minWidth: 0 }}>
+                      <div style={{
+                        width: "36px", height: "36px", borderRadius: "50%", flexShrink: 0,
+                        background: "linear-gradient(135deg, oklch(0.55 0.22 258 / 0.15), oklch(0.65 0.2 290 / 0.1))",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)",
+                      }}>
+                        {g.first_name[0]}{g.last_name[0]}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <Link to="/guests/$id" params={{ id: g.id }} style={{ fontWeight: 700, fontSize: "0.9rem", textDecoration: "none", color: "var(--color-foreground)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {[g.first_name, g.middle_name, g.last_name].filter(Boolean).join(" ")}
+                        </Link>
+                        <div style={{ fontSize: "0.75rem", color: "var(--color-muted-foreground)" }}>{g.origin}</div>
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: "0.68rem", padding: "3px 8px", borderRadius: "9999px", fontWeight: 600, flexShrink: 0,
+                      background: g.status === "camping" ? "oklch(0.55 0.22 258 / 0.1)" : "var(--color-muted)",
+                      color: g.status === "camping" ? "var(--color-accent)" : "var(--color-muted-foreground)",
+                      border: `1px solid ${g.status === "camping" ? "oklch(0.55 0.22 258 / 0.2)" : "var(--color-border)"}`,
+                    }}>
+                      {g.status === "camping" ? "⛺" : "☀️"} {g.status === "camping" ? "Camping" : "Day"}
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+                    <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                      <span style={{ fontSize: "0.78rem", color: "var(--color-muted-foreground)" }}>{g.phone}</span>
+                      {g.day && (
+                        <span style={{ fontSize: "0.72rem", padding: "2px 8px", borderRadius: "6px", fontWeight: 600, background: "oklch(0.55 0.22 258 / 0.08)", color: "var(--color-accent)" }}>
+                          Day {g.day}
+                        </span>
+                      )}
+                    </div>
+                    <div className="no-print" style={{ display: "flex", gap: "6px" }}>
+                      <button onClick={() => startEdit(g)} style={{ padding: "5px 12px", borderRadius: "8px", fontSize: "0.75rem", background: "var(--color-secondary)", border: "1.5px solid var(--color-border)", cursor: "pointer", fontWeight: 500 }}>Edit</button>
+                      <button onClick={() => deleteGuest(g)} style={{ padding: "5px 12px", borderRadius: "8px", fontSize: "0.75rem", background: "oklch(0.58 0.22 27 / 0.08)", border: "1px solid oklch(0.58 0.22 27 / 0.15)", cursor: "pointer", color: "var(--color-destructive)", fontWeight: 500 }}>Delete</button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          ))
+        )}
+        {!loading && (
+          <p style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--color-muted-foreground)", padding: "8px 0" }}>
+            Showing {filtered.length} of {guests.length} guests
+          </p>
+        )}
       </div>
     </div>
   );
