@@ -61,17 +61,17 @@ const AuthenticatedGuestsIdRoute = AuthenticatedGuestsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/guests': typeof AuthenticatedGuestsRouteWithChildren
   '/register': typeof AuthenticatedRegisterRoute
-  '/admin': typeof AuthenticatedAdminRoute
   '/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/api/storage/$': typeof ApiStorageSplatRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/guests': typeof AuthenticatedGuestsRouteWithChildren
   '/register': typeof AuthenticatedRegisterRoute
-  '/admin': typeof AuthenticatedAdminRoute
   '/': typeof AuthenticatedIndexRoute
   '/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/api/storage/$': typeof ApiStorageSplatRoute
@@ -80,9 +80,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/guests': typeof AuthenticatedGuestsRouteWithChildren
   '/_authenticated/register': typeof AuthenticatedRegisterRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/api/storage/$': typeof ApiStorageSplatRoute
@@ -92,20 +92,27 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/admin'
     | '/guests'
     | '/register'
-    | '/admin'
     | '/guests/$id'
     | '/api/storage/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/guests' | '/register' | '/admin' | '/' | '/guests/$id' | '/api/storage/$'
+  to:
+    | '/auth'
+    | '/admin'
+    | '/guests'
+    | '/register'
+    | '/'
+    | '/guests/$id'
+    | '/api/storage/$'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/admin'
     | '/_authenticated/guests'
     | '/_authenticated/register'
-    | '/_authenticated/admin'
     | '/_authenticated/'
     | '/_authenticated/guests/$id'
     | '/api/storage/$'
@@ -190,16 +197,16 @@ const AuthenticatedGuestsRouteWithChildren =
   AuthenticatedGuestsRoute._addFileChildren(AuthenticatedGuestsRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedGuestsRoute: typeof AuthenticatedGuestsRouteWithChildren
   AuthenticatedRegisterRoute: typeof AuthenticatedRegisterRoute
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedGuestsRoute: AuthenticatedGuestsRouteWithChildren,
   AuthenticatedRegisterRoute: AuthenticatedRegisterRoute,
-  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
