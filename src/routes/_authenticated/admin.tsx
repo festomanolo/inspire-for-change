@@ -116,7 +116,9 @@ function MinistryAdminPage() {
     const channel = supabase
       .channel("admin-" + selected.id)
       .on("postgres_changes", { event: "*", schema: "public", table: "guests" }, () => loadData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "guest_edits" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "guest_edits" }, () =>
+        loadData(),
+      )
       .subscribe();
 
     return () => {
@@ -232,10 +234,13 @@ function MinistryAdminPage() {
   );
 
   const staffStats = useMemo(() => {
-    const map: Record<string, { name: string; creates: number; checkIns: number; updates: number }> = {};
+    const map: Record<
+      string,
+      { name: string; creates: number; checkIns: number; updates: number }
+    > = {};
     edits.forEach((e) => {
       const id = e.edited_by ?? "system";
-      const name = e.edited_by ? profiles[e.edited_by]?.display_name ?? "Registrar" : "System";
+      const name = e.edited_by ? (profiles[e.edited_by]?.display_name ?? "Registrar") : "System";
       if (!map[id]) map[id] = { name, creates: 0, checkIns: 0, updates: 0 };
       if (e.action === "create") map[id].creates++;
       else if (e.action === "check_in") map[id].checkIns++;
@@ -248,7 +253,11 @@ function MinistryAdminPage() {
   }, [edits, profiles]);
 
   if (!selected) {
-    return <div className="py-16 text-center text-sm text-muted-foreground">Loading ministry operations…</div>;
+    return (
+      <div className="py-16 text-center text-sm text-muted-foreground">
+        Loading ministry operations…
+      </div>
+    );
   }
 
   return (
@@ -349,7 +358,9 @@ function MinistryAdminPage() {
                         ? [{ label: "Legacy (gender unrecorded)", count: unspecifiedGenderCount }]
                         : []),
                     ].map((item) => {
-                      const pct = guests.length ? Math.round((item.count / guests.length) * 100) : 0;
+                      const pct = guests.length
+                        ? Math.round((item.count / guests.length) * 100)
+                        : 0;
                       return (
                         <div key={item.label} className="space-y-1">
                           <div className="flex justify-between">
