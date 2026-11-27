@@ -14,6 +14,8 @@ const COLORS = {
   warn: "\x1b[33m",
 };
 
+function findAvailablePort(startPort) {
+
 function prefixStream(stream, label, color) {
   let buffer = "";
   stream.on("data", (chunk) => {
