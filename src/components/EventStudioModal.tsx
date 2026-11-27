@@ -498,7 +498,10 @@ export function EventStudioModal() {
             </div>
 
             <div>
-              <label htmlFor="ev-studio-end" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-end"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 End date
               </label>
               <input
@@ -512,7 +515,10 @@ export function EventStudioModal() {
             </div>
 
             <div>
-              <label htmlFor="ev-studio-days" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-days"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Total days
               </label>
               <input
@@ -527,7 +533,10 @@ export function EventStudioModal() {
             </div>
 
             <div>
-              <label htmlFor="ev-studio-cap" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-cap"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Target capacity
               </label>
               <input
@@ -545,7 +554,10 @@ export function EventStudioModal() {
           {/* Row 4: Venue & Year + Subtitle */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="sm:col-span-2">
-              <label htmlFor="ev-studio-venue" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-venue"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Venue / Location
               </label>
               <input
@@ -558,7 +570,10 @@ export function EventStudioModal() {
             </div>
 
             <div>
-              <label htmlFor="ev-studio-year" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-year"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Event year
               </label>
               <input
@@ -574,8 +589,12 @@ export function EventStudioModal() {
           </div>
 
           <div>
-            <label htmlFor="ev-studio-subtitle" className="mb-1.5 block text-xs font-semibold text-foreground">
-              Theme, tagline, or program description <span className="font-normal text-muted-foreground">(optional)</span>
+            <label
+              htmlFor="ev-studio-subtitle"
+              className="mb-1.5 block text-xs font-semibold text-foreground"
+            >
+              Theme, tagline, or program description{" "}
+              <span className="font-normal text-muted-foreground">(optional)</span>
             </label>
             <input
               id="ev-studio-subtitle"
@@ -589,7 +608,12 @@ export function EventStudioModal() {
           {/* Camping & Lodging Toggle */}
           <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border bg-secondary/55 px-4 py-3 text-xs">
             <div className="flex items-center gap-2.5">
-              <Campfire size={17} className="shrink-0 text-warm" weight="duotone" aria-hidden="true" />
+              <Campfire
+                size={17}
+                className="shrink-0 text-warm"
+                weight="duotone"
+                aria-hidden="true"
+              />
               <div>
                 <span className="block font-semibold text-foreground">
                   Enable on-site camping & dormitory allocation
