@@ -98,7 +98,10 @@ export const jsonAuth = {
     options?: { emailRedirectTo?: string; data?: { display_name?: string } };
   }) => {
     try {
-      const result = await apiPost<{ user: JsonUser; session: JsonSession }>("/auth/signup", params);
+      const result = await apiPost<{ user: JsonUser; session: JsonSession }>(
+        "/auth/signup",
+        params,
+      );
       notifyAuthListeners("SIGNED_IN", result.session);
       return { data: result, error: null };
     } catch (error: any) {
@@ -108,7 +111,10 @@ export const jsonAuth = {
 
   signInWithPassword: async (params: { email: string; password: string }) => {
     try {
-      const result = await apiPost<{ user: JsonUser; session: JsonSession }>("/auth/signin", params);
+      const result = await apiPost<{ user: JsonUser; session: JsonSession }>(
+        "/auth/signin",
+        params,
+      );
       notifyAuthListeners("SIGNED_IN", result.session);
       return { data: result, error: null };
     } catch (error: any) {
@@ -355,7 +361,10 @@ function makeProfileBuilder(params: URLSearchParams) {
           })
           .catch((err) => ({ data: null, error: { message: err.message } }));
       }
-      return Promise.resolve({ data: null, error: { message: "Unsupported single profile query" } });
+      return Promise.resolve({
+        data: null,
+        error: { message: "Unsupported single profile query" },
+      });
     },
 
     maybeSingle() {
@@ -435,7 +444,9 @@ export const jsonDb = {
       return makeGuestBuilder(new URLSearchParams());
     },
 
-    insert: (row: Partial<Guest> & { event_id: string; first_name: string; last_name: string }) => ({
+    insert: (
+      row: Partial<Guest> & { event_id: string; first_name: string; last_name: string },
+    ) => ({
       select: (_cols?: string) => ({
         single: () =>
           apiPost<Guest>("/guests", row)
