@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import net from "node:net";
 import process from "node:process";
 
-const BACKEND_PORT = process.env.BACKEND_PORT || "3001";
+const PREFERRED_BACKEND_PORT = Number(process.env.BACKEND_PORT || 8081);
 const FRONTEND_PORT = process.env.PORT || "8080";
 
 const COLORS = {
