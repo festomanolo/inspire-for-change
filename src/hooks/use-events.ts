@@ -1,13 +1,32 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { EventCategory, EventRow, EventStatus } from "@/lib/types";
+import {
+  buildSuggestedEventCode,
+  type EventCategory,
+  type EventRow,
+  type EventStatus,
+} from "@/lib/types";
 
 const STORAGE_KEY = "selectedEventId";
 const EVENT_BUS = "ifc:selected-event-changed";
+export const EVENT_STUDIO_BUS = "ifc:open-event-studio";
+
+export type EventStudioDetail = {
+  mode: "create" | "edit";
+  event?: EventRow;
+  presetCategory?: EventCategory;
+};
+
+export function openEventStudio(detail: EventStudioDetail = { mode: "create" }) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent<EventStudioDetail>(EVENT_STUDIO_BUS, { detail }));
+  }
+}
 
 export type CreateChurchEventInput = {
   name: string;
   year: number;
+  organizer?: string | null;
   code?: string;
   category?: EventCategory;
   subtitle?: string | null;
@@ -20,6 +39,8 @@ export type CreateChurchEventInput = {
   status?: EventStatus;
 };
 
+export type CreateEventInput = CreateChurchEventInput;
+
 export function useEvents() {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -31,7 +52,8 @@ export function useEvents() {
     const { data } = await supabase.from("events").select("*").order("year", { ascending: false });
     const rows = ((data as unknown as EventRow[]) ?? []).map((ev) => ({
       ...ev,
-      code: ev.code || `IFC-${String(ev.year).slice(-2)}`,
+      code: ev.code || buildSuggestedEventCode(ev.name, ev.year),
+      organizer: ev.organizer ?? null,
       category: ev.category || "conference",
       total_days: ev.total_days || 3,
       camping_enabled: ev.camping_enabled !== false,
@@ -40,9 +62,9 @@ export function useEvents() {
     setEvents(rows);
     setSelectedId((prev) => {
       if (rows.length && (!prev || !rows.find((r) => r.id === prev))) {
-        const def = rows[0].id;
-        if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, def);
-        return def;
+        const activeFirst = rows.find((r) => r.status === "active") ?? rows[0];
+        if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, activeFirst.id);
+        return activeFirst.id;
       }
       return prev;
     });
@@ -88,6 +110,7 @@ export function useEvents() {
     const payload = {
       name: input.name.trim(),
       year: input.year,
+      organizer: input.organizer?.trim() || null,
       code: input.code?.trim() || undefined,
       category: input.category || "conference",
       subtitle: input.subtitle?.trim() || null,
@@ -110,11 +133,30 @@ export function useEvents() {
       const created = data as unknown as EventRow;
       select(created.id);
       if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent(EVENT_BUS, { detail: { id: created.id, reload: true } }));
+        window.dispatchEvent(
+          new CustomEvent(EVENT_BUS, { detail: { id: created.id, reload: true } }),
+        );
       }
       return created;
     }
     throw new Error("Failed to create event");
+  };
+
+  const duplicateEvent = async (source: EventRow) => {
+    return createEvent({
+      name: `${source.name} (Copy)`,
+      year: source.year,
+      organizer: source.organizer,
+      category: source.category,
+      subtitle: source.subtitle,
+      venue: source.venue,
+      start_date: source.start_date,
+      end_date: source.end_date,
+      total_days: source.total_days,
+      capacity: source.capacity,
+      camping_enabled: source.camping_enabled,
+      status: "upcoming",
+    });
   };
 
   const createYear = async (year: number, name: string) => {
@@ -151,6 +193,7 @@ export function useEvents() {
     selectedId,
     select,
     createEvent,
+    duplicateEvent,
     createYear,
     updateEvent,
     deleteEvent,

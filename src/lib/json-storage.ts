@@ -334,10 +334,28 @@ function makeGuestBuilder(params: URLSearchParams) {
 function makeProfileBuilder(params: URLSearchParams) {
   const builder: any = {
     _params: params,
+    _updatePayload: null as any,
 
     eq(field: string, value: string) {
       this._params.set(field, value);
       return this;
+    },
+
+    select() {
+      return this;
+    },
+
+    single() {
+      const id = this._params.get("id");
+      if (this._updatePayload !== null && id) {
+        return apiPut<Profile>(`/profiles/${id}`, this._updatePayload)
+          .then((data) => {
+            emitTableChange("profiles", "UPDATE", data);
+            return { data, error: null };
+          })
+          .catch((err) => ({ data: null, error: { message: err.message } }));
+      }
+      return Promise.resolve({ data: null, error: { message: "Unsupported single profile query" } });
     },
 
     maybeSingle() {
@@ -350,6 +368,13 @@ function makeProfileBuilder(params: URLSearchParams) {
 
     async then(resolve: (v: any) => void, reject?: (e: any) => void) {
       try {
+        if (this._updatePayload !== null) {
+          const id = this._params.get("id");
+          const data = await apiPut<Profile>(`/profiles/${id}`, this._updatePayload);
+          emitTableChange("profiles", "UPDATE", data);
+          resolve({ data, error: null });
+          return;
+        }
         const qs = this._params.toString() ? "?" + this._params.toString() : "";
         const data = await apiGet<Profile[]>(`/profiles${qs}`);
         resolve({ data, error: null });
@@ -366,6 +391,12 @@ export const jsonDb = {
   profiles: {
     select(_cols?: string) {
       return makeProfileBuilder(new URLSearchParams());
+    },
+
+    update(updates: Partial<Profile>) {
+      const builder = makeProfileBuilder(new URLSearchParams());
+      builder._updatePayload = updates;
+      return builder;
     },
   },
 

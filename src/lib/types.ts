@@ -19,22 +19,26 @@ export type EventCategory =
   | "crusade"
   | "youth_retreat"
   | "leadership_summit"
+  | "seminar_workshop"
+  | "community_gala"
   | "worship_service";
 
-export type EventStatus = "upcoming" | "active" | "archived";
+export type EventStatus = "upcoming" | "active" | "completed" | "archived";
+
+export type StaffRole = "manager" | "admin" | "registrar" | "usher";
 
 export type Profile = {
   id: string;
   email: string;
   display_name: string;
-  role?: "admin" | "registrar" | "usher";
+  role?: StaffRole;
   created_at?: string;
 };
 
 export type Guest = {
   /** Immutable RFC-4122 UUID v4 primary key — never derived from phone number */
   id: string;
-  /** Human-scannable unique event badge code, e.g. IFC-26-0001 */
+  /** Human-scannable unique event badge code, e.g. YRC-26-0001 */
   reg_code: string;
   event_id: string;
   /** Optional shared family/delegation UUID for households sharing contact info */
@@ -73,6 +77,8 @@ export type EventRow = {
   code: string;
   year: number;
   name: string;
+  /** Host organization, ministry, department, or program brand (not limited to Inspired for Change) */
+  organizer: string | null;
   category: EventCategory;
   subtitle: string | null;
   venue: string | null;
@@ -110,11 +116,11 @@ export const AGE_GROUP_LABELS: Record<AgeGroup, string> = {
 };
 
 export const MINISTRY_ROLE_LABELS: Record<MinistryRole, string> = {
-  member: "Church member",
+  member: "Member / Delegate",
   visitor: "Visiting guest",
   first_timer: "First-time visitor",
   pastor: "Pastor / Clergy",
-  leader: "Ministry leader",
+  leader: "Ministry / Team leader",
   choir_media: "Choir & Media",
   volunteer: "Usher / Steward",
 };
@@ -122,11 +128,45 @@ export const MINISTRY_ROLE_LABELS: Record<MinistryRole, string> = {
 export const EVENT_CATEGORY_LABELS: Record<EventCategory, string> = {
   conference: "Conference & convention",
   camp: "Camp & retreat",
-  crusade: "Gospel crusade",
+  crusade: "Outreach & crusade",
   youth_retreat: "Youth & campus",
   leadership_summit: "Leadership summit",
-  worship_service: "Special worship service",
+  seminar_workshop: "Seminar & workshop",
+  community_gala: "Community & gala",
+  worship_service: "Special gathering",
 };
+
+export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
+  active: "Active now",
+  upcoming: "Upcoming",
+  completed: "Completed",
+  archived: "Archived",
+};
+
+export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
+  manager: "Event manager",
+  admin: "Administrator",
+  registrar: "Desk registrar",
+  usher: "Gate usher",
+};
+
+export function buildSuggestedEventCode(name: string, year: number): string {
+  const words = name
+    .replace(/[^a-zA-Z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  let prefix = "EVT";
+  if (words.length >= 2) {
+    prefix = words
+      .map((w) => w[0]?.toUpperCase() ?? "")
+      .join("")
+      .slice(0, 4);
+  } else if (words.length === 1) {
+    prefix = words[0].slice(0, 3).toUpperCase();
+  }
+  if (prefix.length < 2) prefix = "EVT";
+  return `${prefix}-${String(year).slice(-2)}`;
+}
 
 export function suggestAccommodationZone(
   gender: Gender,
@@ -135,8 +175,8 @@ export function suggestAccommodationZone(
 ): string | null {
   if (status !== "camping") return null;
   if (ageGroup === "child") return "Family & Children Lodge";
-  if (gender === "male") return "Men's Sanctuary Dorm A";
-  if (gender === "female") return "Women's Sanctuary Dorm B";
+  if (gender === "male") return "Men's Dormitory Zone A";
+  if (gender === "female") return "Women's Dormitory Zone B";
   return "General Campgrounds";
 }
 

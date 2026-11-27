@@ -192,6 +192,15 @@ export const Route = createFileRoute("/api/storage/$")({
             });
           }
 
+          const profileIdMatch = splat.match(/^profiles\/([^/]+)$/);
+          if (profileIdMatch) {
+            const id = decodeURIComponent(profileIdMatch[1]);
+            const result = dbHandlers.profiles.update(id, body);
+            return new Response(JSON.stringify(result), {
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+
           return new Response(JSON.stringify({ message: `Route not found: ${splat}` }), { status: 404 });
         } catch (error: any) {
           console.error("[API PUT Error]", error);

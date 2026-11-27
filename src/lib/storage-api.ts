@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import {
+  buildSuggestedEventCode,
   suggestAccommodationZone,
   type Profile,
   type Guest,
@@ -48,25 +49,19 @@ function writeJson<T>(filePath: string, data: T): void {
 }
 
 function buildEventCode(name: string, year: number): string {
-  const initials = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("")
-    .slice(0, 4);
-  const prefix = initials.length >= 2 ? initials : "IFC";
-  return `${prefix}-${String(year).slice(-2)}`;
+  return buildSuggestedEventCode(name, year);
 }
 
 function normalizeEvent(raw: Partial<EventRow> & { id: string; year: number; name: string; created_at: string }): EventRow {
   return {
     id: raw.id,
-    code: raw.code || buildEventCode(raw.name, raw.year),
+    code: raw.code?.trim() || buildEventCode(raw.name, raw.year),
     year: raw.year,
     name: raw.name,
+    organizer: raw.organizer !== undefined ? (raw.organizer ? raw.organizer.trim() : null) : null,
     category: raw.category || "conference",
-    subtitle: raw.subtitle ?? "Inspired for Change Fellowship Gathering",
-    venue: raw.venue ?? "Main Sanctuary & Campgrounds",
+    subtitle: raw.subtitle !== undefined ? (raw.subtitle ? raw.subtitle.trim() : null) : null,
+    venue: raw.venue !== undefined ? (raw.venue ? raw.venue.trim() : null) : "Main Venue & Grounds",
     start_date: raw.start_date ?? null,
     end_date: raw.end_date ?? null,
     total_days: typeof raw.total_days === "number" && raw.total_days >= 1 ? raw.total_days : 3,
@@ -78,7 +73,7 @@ function normalizeEvent(raw: Partial<EventRow> & { id: string; year: number; nam
 }
 
 function generateRegCode(eventCode: string, sequenceNumber: number): string {
-  const cleanPrefix = (eventCode || "IFC-26").toUpperCase().replace(/[^A-Z0-9-]/g, "");
+  const cleanPrefix = (eventCode || "EVT-26").toUpperCase().replace(/[^A-Z0-9-]/g, "");
   return `${cleanPrefix}-${String(sequenceNumber).padStart(4, "0")}`;
 }
 
