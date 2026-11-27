@@ -1331,7 +1331,9 @@ function ManagerDashboardPage() {
                 {/* Top Organizations / Parishes / Cities */}
                 <div className="surface-card space-y-3 p-6">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold text-foreground">Parishes, chapters & origins</h3>
+                    <h3 className="text-base font-bold text-foreground">
+                      Parishes, chapters & origins
+                    </h3>
                     <Church size={17} className="text-accent" aria-hidden="true" />
                   </div>
                   {selectedAnalytics.topOrigins.length === 0 ? (
@@ -1365,7 +1367,8 @@ function ManagerDashboardPage() {
                         Staff directory & role governance
                       </h2>
                       <p className="text-xs text-muted-foreground">
-                        Assign manager, administrator, registrar, or gate usher roles across your team
+                        Assign manager, administrator, registrar, or gate usher roles across your
+                        team
                       </p>
                     </div>
                     <span className="font-mono-code text-xs text-muted-foreground">
@@ -1390,12 +1393,17 @@ function ManagerDashboardPage() {
                               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                                 <span>{item.profile.display_name}</span>
                                 {idx === 0 && item.total > 0 && (
-                                  <Medal size={15} className="text-warm" weight="fill" aria-hidden="true" />
+                                  <Medal
+                                    size={15}
+                                    className="text-warm"
+                                    weight="fill"
+                                    aria-hidden="true"
+                                  />
                                 )}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {item.profile.email} · {item.creates} reg · {item.checkIns} check-ins ·{" "}
-                                {item.updates} edits
+                                {item.profile.email} · {item.creates} reg · {item.checkIns}{" "}
+                                check-ins · {item.updates} edits
                               </div>
                             </div>
                           </div>
@@ -1429,7 +1437,8 @@ function ManagerDashboardPage() {
                           Canonical UUID deduplication ({selected.name})
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          Merge any legacy multi-row same-person entries into single multi-day records.
+                          Merge any legacy multi-row same-person entries into single multi-day
+                          records.
                         </span>
                       </div>
                       <button
@@ -1557,7 +1566,7 @@ function ManagerDashboardPage() {
                           const evId = e.event_id || e.guest?.event_id;
                           const ev = evId ? eventMap[evId] : null;
                           const actor = e.edited_by
-                            ? profileMap[e.edited_by]?.display_name ?? "Registrar"
+                            ? (profileMap[e.edited_by]?.display_name ?? "Registrar")
                             : "System";
 
                           return (
@@ -1592,9 +1601,11 @@ function ManagerDashboardPage() {
                                   </Link>
                                 ) : (
                                   <span className="text-muted-foreground">
-                                    {(e.changes as any)?.deleted_guest ||
-                                      (e.changes as any)?.name ||
-                                      "—"}
+                                    {String(
+                                      (e.changes as Record<string, unknown>)?.deleted_guest ||
+                                        (e.changes as Record<string, unknown>)?.name ||
+                                        "—",
+                                    )}
                                   </span>
                                 )}
                               </td>
@@ -1638,7 +1649,8 @@ function ManagerDashboardPage() {
                 <strong className="font-mono-code text-foreground">
                   {eventMetrics.get(confirmDeleteEvent.id)?.registered ?? 0}
                 </strong>{" "}
-                registered attendee record(s). To preserve historical data without active desk clutter, mark the event as <strong>Archived</strong> instead.
+                registered attendee record(s). To preserve historical data without active desk
+                clutter, mark the event as <strong>Archived</strong> instead.
               </p>
               <div className="flex justify-end gap-2 pt-2">
                 <button
