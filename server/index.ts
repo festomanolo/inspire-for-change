@@ -174,3 +174,91 @@ const server = http.createServer(async (req, res) => {
         );
         broadcastChange("events", "INSERT", created);
         sendJson(res, 200, created);
+      } else if (splat === "guests/consolidate") {
+        const result = dbHandlers.guests.consolidateDuplicates(
+          String(body.event_id || ""),
+          (body.actor_id as string | null | undefined) ?? null,
+        );
+        broadcastChange("guests", "UPDATE");
+        broadcastChange("guest_edits", "INSERT");
+        sendJson(res, 200, result);
+      } else if (splat === "guests") {
+        const created = dbHandlers.guests.create(
+          body as Parameters<typeof dbHandlers.guests.create>[0],
+        );
+        broadcastChange("guests", "INSERT", created);
+        broadcastChange("guest_edits", "INSERT");
+        sendJson(res, 200, created);
+      } else if (splat === "guest-edits") {
+        const created = dbHandlers.guestEdits.create(
+          body as Parameters<typeof dbHandlers.guestEdits.create>[0],
+        );
+        broadcastChange("guest_edits", "INSERT", created);
+        sendJson(res, 200, created);
+      } else {
+        sendJson(res, 404, { message: `Route not found: ${splat}` });
+      }
+    } else if (method === "PUT") {
+      const body = await readBody(req);
+      if (/^guests\/[^/]+$/.test(splat)) {
+        const id = decodeURIComponent(splat.slice("guests/".length));
+        const updated = dbHandlers.guests.update(id, body);
+        broadcastChange("guests", "UPDATE", updated);
+        broadcastChange("guest_edits", "INSERT");
+        sendJson(res, 200, updated);
+      } else if (/^events\/[^/]+$/.test(splat)) {
+        const id = decodeURIComponent(splat.slice("events/".length));
+        const updated = dbHandlers.events.update(id, body);
+        broadcastChange("events", "UPDATE", updated);
+        sendJson(res, 200, updated);
+      } else if (/^profiles\/[^/]+$/.test(splat)) {
+        const id = decodeURIComponent(splat.slice("profiles/".length));
+        const updated = dbHandlers.profiles.update(id, body);
+        broadcastChange("profiles", "UPDATE", updated);
+        sendJson(res, 200, updated);
+      } else {
+        sendJson(res, 404, { message: `Route not found: ${splat}` });
+      }
+    } else if (method === "DELETE") {
+      if (/^guests\/[^/]+$/.test(splat)) {
+        const id = decodeURIComponent(splat.slice("guests/".length));
+        dbHandlers.guests.delete(id);
+        broadcastChange("guests", "DELETE", { id });
+        broadcastChange("guest_edits", "INSERT");
+        sendJson(res, 200, { success: true });
+      } else if (/^events\/[^/]+$/.test(splat)) {
+        const id = decodeURIComponent(splat.slice("events/".length));
+        dbHandlers.events.delete(id);
+        broadcastChange("events", "DELETE", { id });
+        sendJson(res, 200, { success: true });
+      } else {
+        sendJson(res, 404, { message: `Route not found: ${splat}` });
+      }
+    } else {
+      sendJson(res, 405, { message: `Method ${method} not allowed` });
+    }
+
+    const ms = Date.now() - startedAt;
+    console.log(`${method} ${pathname} -> ${res.statusCode} (${ms}ms)`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Internal Server Error";
+    console.error(`[API Error] ${method} ${pathname}:`, message);
+    sendJson(res, 500, { message });
+  }
+});
+
+// Periodic SSE heartbeat so proxies keep connections alive
+const heartbeat = setInterval(() => {
+  for (const client of sseClients) {
+    try {
+      client.write(": heartbeat\n\n");
+    } catch {
+      sseClients.delete(client);
+    }
+  }
+}, 25000);
+heartbeat.unref();
+
+server.listen(PORT, HOST, () => {
+  console.log(`Backend API listening on http://localhost:${PORT} (health: http://localhost:${PORT}/api/health)`);
+});
