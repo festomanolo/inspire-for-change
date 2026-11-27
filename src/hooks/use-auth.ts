@@ -34,14 +34,24 @@ export function useAuth() {
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
-      setUser((session?.user as any) ?? null);
-      if (session?.user) loadProfile(session.user.id);
+      const u = (session?.user as any) ?? null;
+      currentUid = u?.id ?? null;
+      setUser(u);
+      if (u) loadProfile(u.id);
       else setProfile(null);
     });
+
+    const ch = supabase
+      .channel("auth-profile-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
+        if (currentUid) loadProfile(currentUid);
+      })
+      .subscribe();
 
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();
+      supabase.removeChannel(ch);
     };
   }, []);
 
