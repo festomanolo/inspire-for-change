@@ -2,7 +2,7 @@ import http from "node:http";
 import process from "node:process";
 import { authHandlers, dbHandlers, exportAllData } from "../src/lib/storage-api.ts";
 
-const PORT = Number(process.env.BACKEND_PORT || process.env.API_PORT || 3001);
+const PORT = Number(process.env.BACKEND_PORT || process.env.API_PORT || 8081);
 const HOST = process.env.BACKEND_HOST || "0.0.0.0";
 
 const sseClients = new Set<http.ServerResponse>();
