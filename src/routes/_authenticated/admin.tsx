@@ -637,215 +637,112 @@ function MinistryAdminPage() {
                           ? profiles[e.edited_by]?.display_name ?? "Registrar"
                           : "System";
                         return (
-                          <tr key={e.id} style={{
-                            borderBottom: "1px solid var(--color-border)",
-                            background: i % 2 === 0 ? "transparent" : "var(--color-secondary)/40",
-                            transition: "background 0.1s",
-                          }}>
-                            <td style={{ padding: "11px 16px" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <div style={{
-                                  width: "24px", height: "24px", borderRadius: "50%",
-                                  background: "linear-gradient(135deg, oklch(0.28 0.06 255), oklch(0.55 0.22 258))",
-                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                  color: "white", fontSize: "0.6rem", fontWeight: 700, flexShrink: 0,
-                                }}>
-                                  {who.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-                                </div>
-                                <span style={{ fontSize: "0.85rem", fontWeight: 500 }}>{who}</span>
-                              </div>
-                            </td>
-                            <td style={{ padding: "11px 16px" }}>
-                              <span style={{
-                                padding: "3px 10px", borderRadius: "9999px", fontSize: "0.72rem", fontWeight: 600,
-                                background: isCreate ? "oklch(0.52 0.19 150 / 0.1)" : "oklch(0.65 0.18 60 / 0.1)",
-                                color: isCreate ? "var(--color-success)" : "oklch(0.55 0.18 60)",
-                                border: `1px solid ${isCreate ? "oklch(0.52 0.19 150 / 0.2)" : "oklch(0.65 0.18 60 / 0.2)"}`,
-                              }}>
-                                {isCreate ? "✚ Registered" : "✎ Updated"}
+                          <tr key={e.id} className="hover:bg-secondary/30">
+                            <td className="px-5 py-3 font-semibold text-foreground">{who}</td>
+                            <td className="px-5 py-3">
+                              <span
+                                className={`inline-block rounded-full px-2.5 py-0.5 font-semibold capitalize ${
+                                  e.action === "create"
+                                    ? "bg-success/12 text-success"
+                                    : e.action === "check_in"
+                                      ? "bg-accent/12 text-accent"
+                                      : e.action === "delete"
+                                        ? "bg-destructive/12 text-destructive"
+                                        : "bg-secondary text-foreground"
+                                }`}
+                              >
+                                {e.action.replace("_", " ")}
                               </span>
                             </td>
-                            <td style={{ padding: "11px 16px" }}>
+                            <td className="px-5 py-3">
                               {e.guest ? (
-                                <Link to="/guests/$id" params={{ id: e.guest.id }}
-                                  style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--color-accent)",
-                                    textDecoration: "none" }}
-                                  onMouseEnter={(el) => (el.currentTarget.style.textDecoration = "underline")}
-                                  onMouseLeave={(el) => (el.currentTarget.style.textDecoration = "none")}>
-                                  {e.guest.first_name} {e.guest.last_name}
+                                <Link
+                                  to="/guests/$id"
+                                  params={{ id: e.guest.id }}
+                                  className="font-semibold text-accent no-underline hover:underline"
+                                >
+                                  {formatFullName(e.guest)} ({e.guest.reg_code})
                                 </Link>
                               ) : (
-                                <span style={{ fontSize: "0.85rem", color: "var(--color-muted-foreground)" }}>—</span>
-                              )}
-                            </td>
-                            <td style={{ padding: "11px 16px", fontSize: "0.82rem", color: "var(--color-muted-foreground)" }}>
-                              {e.guest?.origin ?? "—"}
-                            </td>
-                            <td style={{ padding: "11px 16px" }}>
-                              {e.guest?.day ? (
-                                <span style={{
-                                  width: "22px", height: "22px", borderRadius: "6px", display: "inline-flex",
-                                  alignItems: "center", justifyContent: "center",
-                                  background: "oklch(0.55 0.22 258 / 0.1)", color: "var(--color-accent)",
-                                  fontSize: "0.75rem", fontWeight: 700,
-                                }}>
-                                  {e.guest.day}
+                                <span className="text-muted-foreground">
+                                  {(e.changes as any)?.deleted_guest || "—"}
                                 </span>
-                              ) : (
-                                <span style={{ color: "var(--color-muted-foreground)", fontSize: "0.82rem" }}>—</span>
                               )}
                             </td>
-                            <td style={{ padding: "11px 16px" }}>
-                              <div style={{ fontSize: "0.78rem", color: "var(--color-muted-foreground)" }}>
-                                {formatDistanceToNow(new Date(e.edited_at), { addSuffix: true })}
-                              </div>
-                              <div style={{ fontSize: "0.7rem", color: "var(--color-muted-foreground)", opacity: 0.7 }}>
-                                {format(new Date(e.edited_at), "MMM d, HH:mm")}
-                              </div>
+                            <td className="max-w-xs truncate px-5 py-3 font-mono-code text-muted-foreground">
+                              {JSON.stringify(e.changes)}
+                            </td>
+                            <td className="whitespace-nowrap px-5 py-3 text-muted-foreground">
+                              {format(new Date(e.edited_at), "MMM d, HH:mm")} (
+                              {formatDistanceToNow(new Date(e.edited_at), { addSuffix: true })})
                             </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
-
-                  {/* Mobile list */}
-                  <div className="md:hidden" style={{ display: "flex", flexDirection: "column" }}>
-                    {edits.map((e) => {
-                      const who = e.edited_by ? (profiles[e.edited_by]?.display_name ?? "Unknown") : "Unknown";
-                      const isCreate = e.action === "create";
-                      return (
-                        <div key={e.id} style={{ padding: "14px 16px", borderBottom: "1px solid var(--color-border)" }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                              <div style={{
-                                width: "26px", height: "26px", borderRadius: "50%",
-                                background: "linear-gradient(135deg, oklch(0.28 0.06 255), oklch(0.55 0.22 258))",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                color: "white", fontSize: "0.62rem", fontWeight: 700, flexShrink: 0,
-                              }}>
-                                {who.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-                              </div>
-                              <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>{who}</span>
-                            </div>
-                            <span style={{ fontSize: "0.72rem", color: "var(--color-muted-foreground)" }}>
-                              {formatDistanceToNow(new Date(e.edited_at), { addSuffix: true })}
-                            </span>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingLeft: "34px" }}>
-                            <span style={{
-                              padding: "2px 8px", borderRadius: "9999px", fontSize: "0.7rem", fontWeight: 600,
-                              background: isCreate ? "oklch(0.52 0.19 150 / 0.1)" : "oklch(0.65 0.18 60 / 0.1)",
-                              color: isCreate ? "var(--color-success)" : "oklch(0.55 0.18 60)",
-                            }}>
-                              {isCreate ? "Registered" : "Updated"}
-                            </span>
-                            {e.guest && (
-                              <Link to="/guests/$id" params={{ id: e.guest.id }}
-                                style={{ fontSize: "0.82rem", color: "var(--color-accent)", textDecoration: "none", fontWeight: 500 }}>
-                                {e.guest.first_name} {e.guest.last_name}
-                              </Link>
-                            )}
-                            {e.guest?.day && (
-                              <span style={{ fontSize: "0.75rem", color: "var(--color-muted-foreground)" }}>· Day {e.guest.day}</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Staff tab */}
-          {activeTab === "staff" && (
-            <div className="fade-in space-y-4">
-              <div className="surface-card" style={{ padding: "20px" }}>
-                <h2 style={{ marginBottom: "4px" }}>Staff Leaderboard</h2>
-                <p style={{ fontSize: "0.82rem", color: "var(--color-muted-foreground)", marginBottom: "20px" }}>
-                  Guest registrations and updates per staff member
-                </p>
+          {/* TAB 4: REGISTRAR TEAM */}
+          {activeTab === "team" && (
+            <div className="fade-in surface-card p-6">
+              <h2 className="mb-1 text-base font-bold text-foreground">Registrar & usher activity</h2>
+              <p className="mb-5 text-xs text-muted-foreground">
+                Registrations, gate check-ins, and record updates handled per team member.
+              </p>
 
-                {staffList.length === 0 ? (
-                  <p style={{ color: "var(--color-muted-foreground)", fontSize: "0.85rem" }}>No staff activity yet.</p>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    {staffList.map(([id, s], i) => {
-                      const total = s.creates + s.updates;
-                      const pct = staffList[0] ? (total / (staffList[0][1].creates + staffList[0][1].updates)) * 100 : 100;
-                      return (
-                        <div key={id} style={{ padding: "14px 16px", borderRadius: "12px", background: "var(--color-secondary)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-                            <div style={{
-                              width: "32px", height: "32px", borderRadius: "50%", flexShrink: 0,
-                              background: i === 0
-                                ? "linear-gradient(135deg, oklch(0.7 0.15 60), oklch(0.65 0.18 40))"
-                                : "linear-gradient(135deg, oklch(0.28 0.06 255), oklch(0.55 0.22 258))",
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              color: "white", fontSize: "0.75rem", fontWeight: 700,
-                            }}>
-                              {s.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "1px",
-                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {s.name}
-                                {i === 0 && <span style={{ marginLeft: "6px", fontSize: "0.7rem" }}>🏆</span>}
+              {staffStats.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No staff actions recorded yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {staffStats.map(([id, s], idx) => {
+                    const totalActions = s.creates + s.checkIns + s.updates;
+                    const topTotal =
+                      staffStats[0][1].creates +
+                      staffStats[0][1].checkIns +
+                      staffStats[0][1].updates;
+                    const pct = topTotal > 0 ? Math.round((totalActions / topTotal) * 100) : 100;
+
+                    return (
+                      <div
+                        key={id}
+                        className="rounded-xl border border-border bg-secondary/40 p-4"
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary font-mono-code text-xs font-bold text-primary-foreground">
+                              {s.name.slice(0, 2).toUpperCase()}
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                                <span>{s.name}</span>
+                                {idx === 0 && (
+                                  <Medal size={15} className="text-warm" weight="fill" aria-hidden="true" />
+                                )}
                               </div>
-                              <div style={{ fontSize: "0.75rem", color: "var(--color-muted-foreground)" }}>
-                                {s.creates} registered · {s.updates} updated · {total} total
+                              <div className="text-xs text-muted-foreground">
+                                {s.creates} registered · {s.checkIns} gate check-ins · {s.updates} edits
                               </div>
-                            </div>
-                            <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--color-accent)", flexShrink: 0 }}>
-                              {total}
                             </div>
                           </div>
-                          {/* Progress bar */}
-                          <div style={{ height: "4px", borderRadius: "9999px", background: "var(--color-border)", overflow: "hidden" }}>
-                            <div style={{
-                              height: "100%", width: `${pct}%`, borderRadius: "9999px",
-                              background: i === 0
-                                ? "linear-gradient(90deg, oklch(0.7 0.15 60), oklch(0.65 0.18 40))"
-                                : "linear-gradient(90deg, oklch(0.28 0.06 255), oklch(0.55 0.22 258))",
-                              transition: "width 0.5s ease",
-                            }} />
-                          </div>
+                          <span className="font-mono-code text-lg font-bold text-accent">
+                            {totalActions}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Login credentials card */}
-              <div className="surface-card" style={{
-                padding: "20px",
-                borderColor: "oklch(0.55 0.22 258 / 0.25)",
-                background: "oklch(0.55 0.22 258 / 0.03)",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                  </svg>
-                  <h2 style={{ margin: 0 }}>Admin Access</h2>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-border">
+                          <div
+                            className="h-full rounded-full bg-primary"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <p style={{ fontSize: "0.82rem", color: "var(--color-muted-foreground)", lineHeight: 1.6, marginBottom: "14px" }}>
-                  The admin panel is visible to <strong>all authenticated staff members</strong>. Access is granted upon sign-up — no separate credentials needed.
-                </p>
-                <div style={{
-                  padding: "12px 14px", borderRadius: "10px",
-                  background: "var(--color-secondary)", fontSize: "0.82rem", lineHeight: 1.7,
-                }}>
-                  <strong>How to access this panel:</strong><br/>
-                  1. Go to <code style={{ background: "var(--color-muted)", padding: "1px 5px", borderRadius: "4px" }}>/auth</code> on any device<br/>
-                  2. Click <strong>"Create account"</strong> and fill in your details<br/>
-                  3. Sign in with your credentials<br/>
-                  4. Tap <strong>Admin</strong> in the navigation
-                </div>
-              </div>
+              )}
             </div>
           )}
         </>
