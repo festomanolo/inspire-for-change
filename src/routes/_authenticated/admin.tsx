@@ -536,9 +536,55 @@ function MinistryAdminPage() {
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                        Host organization / Ministry / Brand
+                      </label>
+                      <input
+                        value={eventConfig.organizer}
+                        onChange={(e) => setEventConfig({ ...eventConfig, organizer: e.target.value })}
+                        placeholder="e.g. Kingdom Youth, Grace Parish, or custom host"
+                        className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                          Badge prefix
+                        </label>
+                        <input
+                          value={eventConfig.code}
+                          onChange={(e) =>
+                            setEventConfig({ ...eventConfig, code: e.target.value.toUpperCase() })
+                          }
+                          className="w-full rounded-xl border border-border bg-input px-3 py-2.5 font-mono-code text-sm uppercase"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                          Status
+                        </label>
+                        <select
+                          value={eventConfig.status}
+                          onChange={(e) =>
+                            setEventConfig({ ...eventConfig, status: e.target.value as EventStatus })
+                          }
+                          className="w-full rounded-xl border border-border bg-input px-2.5 py-2.5 text-sm"
+                        >
+                          {Object.entries(EVENT_STATUS_LABELS).map(([k, lbl]) => (
+                            <option key={k} value={k}>
+                              {lbl}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold text-foreground">
-                      Venue / Sanctuary location
+                      Venue / Location
                     </label>
                     <input
                       value={eventConfig.venue}
@@ -549,7 +595,7 @@ function MinistryAdminPage() {
 
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold text-foreground">
-                      Theme / Scripture subtitle
+                      Theme / Subtitle
                     </label>
                     <input
                       value={eventConfig.subtitle}
