@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Profile } from "@/lib/types";
 
-export type Profile = {
-  id: string;
-  email: string;
-  display_name: string;
-};
+export type { Profile };
 
 type JsonUser = {
   id: string;
