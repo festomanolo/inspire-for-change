@@ -62,9 +62,9 @@ export function useEvents() {
     setEvents(rows);
     setSelectedId((prev) => {
       if (rows.length && (!prev || !rows.find((r) => r.id === prev))) {
-        const def = rows[0].id;
-        if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, def);
-        return def;
+        const activeFirst = rows.find((r) => r.status === "active") ?? rows[0];
+        if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, activeFirst.id);
+        return activeFirst.id;
       }
       return prev;
     });
@@ -110,6 +110,7 @@ export function useEvents() {
     const payload = {
       name: input.name.trim(),
       year: input.year,
+      organizer: input.organizer?.trim() || null,
       code: input.code?.trim() || undefined,
       category: input.category || "conference",
       subtitle: input.subtitle?.trim() || null,
