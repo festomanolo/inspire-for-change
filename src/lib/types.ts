@@ -77,6 +77,8 @@ export type EventRow = {
   code: string;
   year: number;
   name: string;
+  /** Host organization, ministry, department, or program brand (not limited to Inspired for Change) */
+  organizer: string | null;
   category: EventCategory;
   subtitle: string | null;
   venue: string | null;
@@ -114,7 +116,7 @@ export const AGE_GROUP_LABELS: Record<AgeGroup, string> = {
 };
 
 export const MINISTRY_ROLE_LABELS: Record<MinistryRole, string> = {
-  member: "Church member",
+  member: "Member / Delegate",
   visitor: "Visiting guest",
   first_timer: "First-time visitor",
   pastor: "Pastor / Clergy",
