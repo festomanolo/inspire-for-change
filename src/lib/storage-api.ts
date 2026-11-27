@@ -1,20 +1,23 @@
-// Server-side JSON storage API
+// Server-side JSON storage API for Church Events Management System
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import type { Profile, Guest, EventRow, GuestEdit } from "./types";
+import {
+  suggestAccommodationZone,
+  type Profile,
+  type Guest,
+  type EventRow,
+  type GuestEdit,
+} from "./types";
 
-// Get the data directory path
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DATA_DIR = path.join(__dirname, "../../data");
 
-// Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// File paths
 const FILES = {
   session: path.join(DATA_DIR, "session.json"),
   profiles: path.join(DATA_DIR, "profiles.json"),
@@ -23,7 +26,6 @@ const FILES = {
   guest_edits: path.join(DATA_DIR, "guest-edits.json"),
 };
 
-// Helper to read JSON file
 function readJson<T>(filePath: string, defaultValue: T): T {
   try {
     if (fs.existsSync(filePath)) {
@@ -36,7 +38,6 @@ function readJson<T>(filePath: string, defaultValue: T): T {
   return defaultValue;
 }
 
-// Helper to write JSON file
 function writeJson<T>(filePath: string, data: T): void {
   try {
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
@@ -46,11 +47,148 @@ function writeJson<T>(filePath: string, data: T): void {
   }
 }
 
-// Initialize sample data
+function buildEventCode(name: string, year: number): string {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("")
+    .slice(0, 4);
+  const prefix = initials.length >= 2 ? initials : "IFC";
+  return `${prefix}-${String(year).slice(-2)}`;
+}
+
+function normalizeEvent(raw: Partial<EventRow> & { id: string; year: number; name: string; created_at: string }): EventRow {
+  return {
+    id: raw.id,
+    code: raw.code || buildEventCode(raw.name, raw.year),
+    year: raw.year,
+    name: raw.name,
+    category: raw.category || "conference",
+    subtitle: raw.subtitle ?? "Inspired for Change Fellowship Gathering",
+    venue: raw.venue ?? "Main Sanctuary & Campgrounds",
+    start_date: raw.start_date ?? null,
+    end_date: raw.end_date ?? null,
+    total_days: typeof raw.total_days === "number" && raw.total_days >= 1 ? raw.total_days : 3,
+    capacity: typeof raw.capacity === "number" ? raw.capacity : 500,
+    camping_enabled: raw.camping_enabled !== false,
+    status: raw.status || "active",
+    created_at: raw.created_at,
+  };
+}
+
+function generateRegCode(eventCode: string, sequenceNumber: number): string {
+  const cleanPrefix = (eventCode || "IFC-26").toUpperCase().replace(/[^A-Z0-9-]/g, "");
+  return `${cleanPrefix}-${String(sequenceNumber).padStart(4, "0")}`;
+}
+
+function normalizeGuest(
+  raw: Partial<Guest> & { id: string; event_id: string; first_name: string; last_name: string },
+  fallbackIndex: number,
+  eventCodeMap: Record<string, string>,
+): Guest {
+  const days = Array.isArray(raw.days_registered) && raw.days_registered.length > 0
+    ? Array.from(new Set(raw.days_registered.filter((d) => typeof d === "number" && d >= 1))).sort((a, b) => a - b)
+    : typeof raw.day === "number" && raw.day >= 1
+      ? [raw.day]
+      : [1];
+
+  const gender = raw.gender === "male" || raw.gender === "female" ? raw.gender : "unspecified";
+  const status = raw.status === "camping" ? "camping" : "not_camping";
+  const ageGroup = raw.age_group || "adult";
+  const evCode = eventCodeMap[raw.event_id] || "IFC-26";
+
+  return {
+    id: raw.id || crypto.randomUUID(),
+    reg_code: raw.reg_code || generateRegCode(evCode, fallbackIndex + 1),
+    event_id: raw.event_id,
+    household_id: raw.household_id ?? null,
+    first_name: (raw.first_name ?? "").trim(),
+    middle_name: raw.middle_name ? raw.middle_name.trim() : null,
+    last_name: (raw.last_name ?? "").trim(),
+    gender,
+    age_group: ageGroup,
+    origin: (raw.origin ?? "").trim(),
+    church_name: raw.church_name ? raw.church_name.trim() : null,
+    ministry_role: raw.ministry_role || "member",
+    phone: (raw.phone ?? "").trim(),
+    is_shared_phone: Boolean(raw.is_shared_phone),
+    guardian_name: raw.guardian_name ? raw.guardian_name.trim() : null,
+    email: raw.email ? raw.email.trim() : null,
+    status,
+    accommodation_zone:
+      raw.accommodation_zone !== undefined
+        ? raw.accommodation_zone
+        : suggestAccommodationZone(gender, status, ageGroup),
+    dietary_medical: raw.dietary_medical ? raw.dietary_medical.trim() : null,
+    day: days[0] ?? null,
+    days_registered: days,
+    check_ins: raw.check_ins && typeof raw.check_ins === "object" ? raw.check_ins : {},
+    created_by: raw.created_by ?? null,
+    updated_by: raw.updated_by ?? null,
+    created_at: raw.created_at || new Date().toISOString(),
+    updated_at: raw.updated_at || new Date().toISOString(),
+  };
+}
+
+function loadNormalizedEvents(): EventRow[] {
+  const rawEvents = readJson<any[]>(FILES.events, []);
+  let mutated = false;
+  const normalized = rawEvents.map((ev) => {
+    const n = normalizeEvent(ev);
+    if (!ev.code || !ev.category || !ev.total_days) mutated = true;
+    return n;
+  });
+  if (mutated) {
+    writeJson(FILES.events, normalized);
+  }
+  return normalized;
+}
+
+function loadNormalizedGuests(): Guest[] {
+  const events = loadNormalizedEvents();
+  const eventCodeMap: Record<string, string> = {};
+  events.forEach((e) => {
+    eventCodeMap[e.id] = e.code;
+  });
+
+  const rawGuests = readJson<any[]>(FILES.guests, []);
+  let mutated = false;
+  const perEventCounter: Record<string, number> = {};
+
+  const normalized = rawGuests.map((g) => {
+    const count = perEventCounter[g.event_id] ?? 0;
+    perEventCounter[g.event_id] = count + 1;
+    const n = normalizeGuest(g, count, eventCodeMap);
+    if (!g.reg_code || !Array.isArray(g.days_registered) || !g.gender) {
+      mutated = true;
+    }
+    return n;
+  });
+
+  if (mutated) {
+    writeJson(FILES.guests, normalized);
+  }
+  return normalized;
+}
+
+function appendAuditLog(entry: Omit<GuestEdit, "id" | "edited_at">) {
+  const edits = readJson<GuestEdit[]>(FILES.guest_edits, []);
+  const newEdit: GuestEdit = {
+    id: crypto.randomUUID(),
+    ...entry,
+    edited_at: new Date().toISOString(),
+  };
+  edits.push(newEdit);
+  writeJson(FILES.guest_edits, edits);
+  return newEdit;
+}
+
 function initializeSampleData() {
-  const events = readJson<EventRow[]>(FILES.events, []);
+  const events = loadNormalizedEvents();
   if (events.length === 0) {
-    const sampleEvent: EventRow = {
+    const year = new Date().getFullYear();
+    const sampleEvent: EventRow = normalizeEvent({
       id: crypto.randomUUID(),
       year: new Date().getFullYear(),
       name: "Annual Gathering",
