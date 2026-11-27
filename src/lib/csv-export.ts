@@ -48,119 +48,124 @@ export async function exportGuestsToCSV(eventId?: string): Promise<void> {
   const profiles: Profile[] = data.profiles ?? [];
   const events: EventRow[] = data.events ?? [];
 
-    // Enrich with creator/updater names
-    const profiles: Profile[] = data.profiles;
-    const events: EventRow[] = data.events;
+  const enrichedGuests = guests.map((guest) => {
+    const creator = profiles.find((p) => p.id === guest.created_by);
+    const updater = profiles.find((p) => p.id === guest.updated_by);
+    const event = events.find((e) => e.id === guest.event_id);
+    const daysReg = Array.isArray(guest.days_registered) && guest.days_registered.length > 0
+      ? guest.days_registered.map((d) => `Day ${d}`).join("; ")
+      : guest.day
+        ? `Day ${guest.day}`
+        : "";
+    const checkedInDays = Object.keys(guest.check_ins ?? {})
+      .sort()
+      .map((d) => `Day ${d}`)
+      .join("; ");
 
-    const enrichedGuests = guests.map((guest) => {
-      const creator = profiles.find((p) => p.id === guest.created_by);
-      const updater = profiles.find((p) => p.id === guest.updated_by);
-      const event = events.find((e) => e.id === guest.event_id);
+    return {
+      uuid: guest.id,
+      reg_code: guest.reg_code || "",
+      event_code: event?.code || "",
+      event_name: event?.name || "",
+      event_year: event?.year || "",
+      first_name: guest.first_name,
+      middle_name: guest.middle_name || "",
+      last_name: guest.last_name,
+      gender: GENDER_LABELS[guest.gender] || guest.gender || "",
+      age_group: AGE_GROUP_LABELS[guest.age_group] || guest.age_group || "",
+      ministry_role: MINISTRY_ROLE_LABELS[guest.ministry_role] || guest.ministry_role || "",
+      church_name: guest.church_name || "",
+      origin: guest.origin,
+      phone: guest.phone || "",
+      shared_household_phone: guest.is_shared_phone ? "Yes" : "No",
+      guardian_name: guest.guardian_name || "",
+      email: guest.email || "",
+      accommodation_status: guest.status === "camping" ? "Camping" : "Day Attendee",
+      accommodation_zone: guest.accommodation_zone || "",
+      days_registered: daysReg,
+      checked_in_days: checkedInDays,
+      dietary_medical_notes: guest.dietary_medical || "",
+      household_id: guest.household_id || "",
+      registered_by: creator?.display_name || "",
+      updated_by: updater?.display_name || "",
+      created_at: guest.created_at,
+      updated_at: guest.updated_at,
+    };
+  });
 
-      return {
-        id: guest.id,
-        event_year: event?.year || "",
-        event_name: event?.name || "",
-        first_name: guest.first_name,
-        middle_name: guest.middle_name || "",
-        last_name: guest.last_name,
-        origin: guest.origin,
-        phone: guest.phone,
-        status: guest.status,
-        created_by_name: creator?.display_name || "",
-        created_by_email: creator?.email || "",
-        updated_by_name: updater?.display_name || "",
-        updated_by_email: updater?.email || "",
-        created_at: guest.created_at,
-        updated_at: guest.updated_at,
-      };
-    });
+  const headers = [
+    "uuid",
+    "reg_code",
+    "event_code",
+    "event_name",
+    "event_year",
+    "first_name",
+    "middle_name",
+    "last_name",
+    "gender",
+    "age_group",
+    "ministry_role",
+    "church_name",
+    "origin",
+    "phone",
+    "shared_household_phone",
+    "guardian_name",
+    "email",
+    "accommodation_status",
+    "accommodation_zone",
+    "days_registered",
+    "checked_in_days",
+    "dietary_medical_notes",
+    "household_id",
+    "registered_by",
+    "updated_by",
+    "created_at",
+    "updated_at",
+  ];
 
-    const headers = [
-      "id",
-      "event_year",
-      "event_name",
-      "first_name",
-      "middle_name",
-      "last_name",
-      "origin",
-      "phone",
-      "status",
-      "created_by_name",
-      "created_by_email",
-      "updated_by_name",
-      "updated_by_email",
-      "created_at",
-      "updated_at",
-    ];
-
-    const csv = convertToCSV(enrichedGuests, headers);
-    const timestamp = new Date().toISOString().split("T")[0];
-    const filename = eventId
-      ? `guests-event-${timestamp}.csv`
-      : `guests-all-${timestamp}.csv`;
-
-    downloadCSV(filename, csv);
-  } catch (error) {
-    console.error("Error exporting guests to CSV:", error);
-    throw error;
-  }
+  const csv = convertToCSV(enrichedGuests, headers);
+  const timestamp = new Date().toISOString().split("T")[0];
+  const eventSlug = eventId
+    ? (events.find((e) => e.id === eventId)?.code?.toLowerCase() ?? "event")
+    : "all-events";
+  downloadCSV(`attendees-${eventSlug}-${timestamp}.csv`, csv);
 }
 
 export async function exportAllDataToCSV(): Promise<void> {
-  try {
-    const response = await fetch("/api/storage/export");
-    const data = await response.json();
+  const response = await fetch("/api/storage/export");
+  const data = await response.json();
+  const timestamp = new Date().toISOString().split("T")[0];
 
-    const timestamp = new Date().toISOString().split("T")[0];
+  await exportGuestsToCSV();
+  await new Promise((resolve) => setTimeout(resolve, 120));
 
-    // Export guests
-    const guestHeaders = [
-      "id",
-      "event_id",
-      "first_name",
-      "middle_name",
-      "last_name",
-      "origin",
-      "phone",
-      "status",
-      "created_by",
-      "updated_by",
-      "created_at",
-      "updated_at",
-    ];
-    const guestsCSV = convertToCSV(data.guests, guestHeaders);
-    downloadCSV(`guests-${timestamp}.csv`, guestsCSV);
+  const eventHeaders = [
+    "id",
+    "code",
+    "year",
+    "name",
+    "category",
+    "venue",
+    "total_days",
+    "capacity",
+    "camping_enabled",
+    "status",
+    "created_at",
+  ];
+  downloadCSV(`church-events-${timestamp}.csv`, convertToCSV(data.events ?? [], eventHeaders));
 
-    // Small delay between downloads
-    await new Promise((resolve) => setTimeout(resolve, 100));
+  await new Promise((resolve) => setTimeout(resolve, 120));
 
-    // Export events
-    const eventHeaders = ["id", "year", "name", "created_at"];
-    const eventsCSV = convertToCSV(data.events, eventHeaders);
-    downloadCSV(`events-${timestamp}.csv`, eventsCSV);
+  const profileHeaders = ["id", "email", "display_name", "role", "created_at"];
+  downloadCSV(`staff-profiles-${timestamp}.csv`, convertToCSV(data.profiles ?? [], profileHeaders));
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Export profiles
-    const profileHeaders = ["id", "email", "display_name", "created_at"];
-    const profilesCSV = convertToCSV(data.profiles, profileHeaders);
-    downloadCSV(`profiles-${timestamp}.csv`, profilesCSV);
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Export guest edits
-    if (data.guest_edits.length > 0) {
-      const editHeaders = ["id", "guest_id", "edited_by", "edited_at", "action", "changes"];
-      const editsData = data.guest_edits.map((edit: any) => ({
-        ...edit,
-        changes: JSON.stringify(edit.changes),
-      }));
-      const editsCSV = convertToCSV(editsData, editHeaders);
-      downloadCSV(`guest-edits-${timestamp}.csv`, editsCSV);
-    }
-  } catch (error) {
-    console.error("Error exporting all data to CSV:", error);
-    throw error;
+  if (Array.isArray(data.guest_edits) && data.guest_edits.length > 0) {
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    const editHeaders = ["id", "guest_id", "event_id", "edited_by", "edited_at", "action", "changes"];
+    const editsData = data.guest_edits.map((edit: any) => ({
+      ...edit,
+      changes: JSON.stringify(edit.changes),
+    }));
+    downloadCSV(`audit-log-${timestamp}.csv`, convertToCSV(editsData, editHeaders));
   }
 }
