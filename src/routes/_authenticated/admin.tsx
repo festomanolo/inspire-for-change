@@ -1,115 +1,255 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEvents } from "@/hooks/use-events";
-import type { Guest, GuestEdit, Profile } from "@/lib/types";
-import { formatDistanceToNow, format } from "date-fns";
+import { useAuth } from "@/hooks/use-auth";
+import { consolidateEventDuplicates } from "@/lib/json-storage";
+import {
+  AGE_GROUP_LABELS,
+  EVENT_CATEGORY_LABELS,
+  GENDER_LABELS,
+  MINISTRY_ROLE_LABELS,
+  formatFullName,
+  type AgeGroup,
+  type EventCategory,
+  type Guest,
+  type GuestEdit,
+  type Profile,
+} from "@/lib/types";
+import { format, formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
+import {
+  ArrowsMerge,
+  CalendarBlank,
+  ChartBar,
+  Church,
+  ClockCounterClockwise,
+  FloppyDisk,
+  Medal,
+  ShieldCheck,
+  Sparkle,
+  UsersThree,
+} from "@phosphor-icons/react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
-  head: () => ({ meta: [{ title: "Admin — Inspired for Change" }] }),
-  component: AdminPage,
+  head: () => ({ meta: [{ title: "Ministry Operations — Inspired for Change" }] }),
+  component: MinistryAdminPage,
 });
 
-function AdminPage() {
-  const { selected, events } = useEvents();
+type AdminTab = "analytics" | "events" | "audit" | "team";
+
+function MinistryAdminPage() {
+  const { selected, events, select, updateEvent, refresh: refreshEvents } = useEvents();
+  const { user } = useAuth();
+
   const [guests, setGuests] = useState<Guest[]>([]);
   const [edits, setEdits] = useState<(GuestEdit & { guest?: Guest | null })[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "activity" | "staff">("overview");
+  const [activeTab, setActiveTab] = useState<AdminTab>("analytics");
+  const [merging, setMerging] = useState(false);
+  const [savingEvent, setSavingEvent] = useState(false);
+
+  const [eventConfig, setEventConfig] = useState({
+    name: "",
+    year: 2026,
+    category: "conference" as EventCategory,
+    total_days: 3,
+    capacity: 500,
+    venue: "",
+    subtitle: "",
+    camping_enabled: true,
+  });
+
+  const loadData = async () => {
+    if (!selected) return;
+    setLoading(true);
+
+    const { data: gs } = await supabase
+      .from("guests")
+      .select("*")
+      .eq("event_id", selected.id)
+      .order("created_at", { ascending: false });
+    setGuests((gs as unknown as Guest[]) ?? []);
+
+    const { data: es } = await supabase
+      .from("guest_edits")
+      .select("*, guest:guests(*)")
+      .order("edited_at", { ascending: false })
+      .limit(120);
+    const filteredEdits = ((es as unknown as (GuestEdit & { guest?: Guest })[]) ?? []).filter(
+      (e) => e.event_id === selected.id || e.guest?.event_id === selected.id,
+    );
+    setEdits(filteredEdits);
+
+    const { data: ps } = await supabase.from("profiles").select("*");
+    const map: Record<string, Profile> = {};
+    ((ps as unknown as Profile[]) ?? []).forEach((p) => {
+      map[p.id] = p;
+    });
+    setProfiles(map);
+    setLoading(false);
+  };
 
   useEffect(() => {
     if (!selected) return;
-    let cancelled = false;
-
-    const load = async () => {
-      setLoading(true);
-
-      const { data: gs } = await supabase
-        .from("guests")
-        .select("*")
-        .eq("event_id", selected.id)
-        .order("created_at", { ascending: false });
-
-      if (cancelled) return;
-      setGuests((gs as Guest[]) ?? []);
-
-      const { data: es } = await supabase
-        .from("guest_edits")
-        .select("*, guest:guests(*)")
-        .order("edited_at", { ascending: false })
-        .limit(100);
-
-      if (cancelled) return;
-      const filtered = ((es as (GuestEdit & { guest?: Guest })[]) ?? []).filter(
-        (e) => e.guest?.event_id === selected.id,
-      );
-      setEdits(filtered);
-
-      const { data: ps } = await supabase.from("profiles").select("*");
-      if (cancelled) return;
-      const map: Record<string, Profile> = {};
-      ((ps as Profile[]) ?? []).forEach((p) => (map[p.id] = p));
-      setProfiles(map);
-      setLoading(false);
-    };
-
-    load();
+    setEventConfig({
+      name: selected.name,
+      year: selected.year,
+      category: selected.category || "conference",
+      total_days: selected.total_days || 3,
+      capacity: selected.capacity || 500,
+      venue: selected.venue || "",
+      subtitle: selected.subtitle || "",
+      camping_enabled: selected.camping_enabled !== false,
+    });
+    loadData();
 
     const channel = supabase
       .channel("admin-" + selected.id)
-      .on("postgres_changes", { event: "*", schema: "public", table: "guests" }, load)
-      .on("postgres_changes", { event: "*", schema: "public", table: "guest_edits" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "guests" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "guest_edits" }, () => loadData())
       .subscribe();
 
     return () => {
-      cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [selected]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
 
-  const totalGuests = guests.length;
-  const campers = guests.filter((g) => g.status === "camping").length;
-  const notCampers = totalGuests - campers;
-  const day1 = guests.filter((g) => g.day === 1).length;
-  const day2 = guests.filter((g) => g.day === 2).length;
-  const day3 = guests.filter((g) => g.day === 3).length;
-  const totalEdits = edits.length;
-  const creates = edits.filter((e) => e.action === "create").length;
-  const updates = edits.filter((e) => e.action === "update").length;
+  // Detect potential legacy multi-row same-person duplicates
+  const duplicateRowCount = useMemo(() => {
+    const seen = new Set<string>();
+    let extra = 0;
+    for (const g of guests) {
+      const key = [
+        g.first_name.trim().toLowerCase(),
+        (g.middle_name ?? "").trim().toLowerCase(),
+        g.last_name.trim().toLowerCase(),
+        g.phone.trim().toLowerCase(),
+      ].join("|");
+      if (seen.has(key)) extra++;
+      else seen.add(key);
+    }
+    return extra;
+  }, [guests]);
 
-  // Staff activity stats
-  const staffStats: Record<string, { name: string; creates: number; updates: number }> = {};
-  edits.forEach((e) => {
-    const id = e.edited_by ?? "unknown";
-    const name = e.edited_by ? (profiles[e.edited_by]?.display_name ?? "Unknown") : "Unknown";
-    if (!staffStats[id]) staffStats[id] = { name, creates: 0, updates: 0 };
-    if (e.action === "create") staffStats[id].creates++;
-    else staffStats[id].updates++;
-  });
-  const staffList = Object.entries(staffStats).sort(
-    (a, b) => (b[1].creates + b[1].updates) - (a[1].creates + a[1].updates),
+  const handleConsolidateDuplicates = async () => {
+    if (!selected) return;
+    setMerging(true);
+    try {
+      const res = await consolidateEventDuplicates(selected.id, user?.id);
+      if (res.mergedCount > 0) {
+        toast.success(
+          `Consolidated ${res.mergedCount} duplicate multi-day row(s) into canonical UUID records`,
+        );
+      } else {
+        toast.info("All records are already unique canonical UUID profiles");
+      }
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Consolidation failed");
+    } finally {
+      setMerging(false);
+    }
+  };
+
+  const handleSaveEventConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selected) return;
+    setSavingEvent(true);
+    try {
+      await updateEvent(selected.id, {
+        name: eventConfig.name,
+        year: eventConfig.year,
+        category: eventConfig.category,
+        total_days: Math.max(1, Math.min(14, eventConfig.total_days)),
+        capacity: eventConfig.capacity,
+        venue: eventConfig.venue || null,
+        subtitle: eventConfig.subtitle || null,
+        camping_enabled: eventConfig.camping_enabled,
+      });
+      await refreshEvents();
+      toast.success("Event configuration saved");
+    } catch (err: any) {
+      toast.error(err?.message || "Could not update event");
+    } finally {
+      setSavingEvent(false);
+    }
+  };
+
+  // Ministry Intelligence Computations
+  const maleCount = guests.filter((g) => g.gender === "male").length;
+  const femaleCount = guests.filter((g) => g.gender === "female").length;
+  const unspecifiedGenderCount = guests.filter((g) => g.gender === "unspecified").length;
+
+  const ageStats = useMemo(() => {
+    const counts: Record<AgeGroup, number> = {
+      child: 0,
+      youth: 0,
+      young_adult: 0,
+      adult: 0,
+      elder: 0,
+    };
+    guests.forEach((g) => {
+      const ag = g.age_group || "adult";
+      if (counts[ag] !== undefined) counts[ag]++;
+    });
+    return counts;
+  }, [guests]);
+
+  const churchRankings = useMemo(() => {
+    const counts = new Map<string, number>();
+    guests.forEach((g) => {
+      const label = (g.church_name || g.origin || "Unspecified").trim();
+      counts.set(label, (counts.get(label) ?? 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+  }, [guests]);
+
+  const pastoralFollowUps = useMemo(
+    () =>
+      guests.filter(
+        (g) =>
+          g.ministry_role === "first_timer" ||
+          g.ministry_role === "visitor" ||
+          Boolean(g.dietary_medical),
+      ),
+    [guests],
   );
 
-  if (!selected) return <div style={{ color: "var(--color-muted-foreground)" }}>Loading…</div>;
+  const staffStats = useMemo(() => {
+    const map: Record<string, { name: string; creates: number; checkIns: number; updates: number }> = {};
+    edits.forEach((e) => {
+      const id = e.edited_by ?? "system";
+      const name = e.edited_by ? profiles[e.edited_by]?.display_name ?? "Registrar" : "System";
+      if (!map[id]) map[id] = { name, creates: 0, checkIns: 0, updates: 0 };
+      if (e.action === "create") map[id].creates++;
+      else if (e.action === "check_in") map[id].checkIns++;
+      else map[id].updates++;
+    });
+    return Object.entries(map).sort(
+      (a, b) =>
+        b[1].creates + b[1].checkIns + b[1].updates - (a[1].creates + a[1].checkIns + a[1].updates),
+    );
+  }, [edits, profiles]);
+
+  if (!selected) {
+    return <div className="py-16 text-center text-sm text-muted-foreground">Loading ministry operations…</div>;
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: "5px",
-            padding: "3px 10px", borderRadius: "9999px", fontSize: "0.72rem", fontWeight: 700,
-            background: "oklch(0.55 0.22 258 / 0.1)", color: "var(--color-accent)",
-            border: "1px solid oklch(0.55 0.22 258 / 0.2)",
-          }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-            ADMIN PANEL
-          </span>
-          <h1 style={{ margin: 0, lineHeight: 1 }}>Activity Dashboard</h1>
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-semibold text-accent">
+            <ShieldCheck size={15} weight="fill" aria-hidden="true" />
+            <span>Ministry operations & governance</span>
+          </div>
+          <h1 className="mt-1">{selected.name} administration</h1>
         </div>
         <p style={{ fontSize: "0.85rem", color: "var(--color-muted-foreground)", marginTop: "2px" }}>
           Full visibility into all guest registrations and staff actions for <strong>{selected.name}</strong>
