@@ -7,8 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -16,21 +14,51 @@ export type Database = {
     Tables: {
       events: {
         Row: {
+          camping_enabled: boolean
+          capacity: number | null
+          category: string
+          code: string
           created_at: string
+          end_date: string | null
           id: string
           name: string
+          start_date: string | null
+          status: string
+          subtitle: string | null
+          total_days: number
+          venue: string | null
           year: number
         }
         Insert: {
+          camping_enabled?: boolean
+          capacity?: number | null
+          category?: string
+          code?: string
           created_at?: string
+          end_date?: string | null
           id?: string
           name: string
+          start_date?: string | null
+          status?: string
+          subtitle?: string | null
+          total_days?: number
+          venue?: string | null
           year: number
         }
         Update: {
+          camping_enabled?: boolean
+          capacity?: number | null
+          category?: string
+          code?: string
           created_at?: string
+          end_date?: string | null
           id?: string
           name?: string
+          start_date?: string | null
+          status?: string
+          subtitle?: string | null
+          total_days?: number
+          venue?: string | null
           year?: number
         }
         Relationships: []
@@ -41,6 +69,7 @@ export type Database = {
           changes: Json
           edited_at: string
           edited_by: string | null
+          event_id?: string | null
           guest_id: string
           id: string
         }
