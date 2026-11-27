@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useEvents } from "@/hooks/use-events";
+import { openEventStudio, useEvents } from "@/hooks/use-events";
 import {
   EVENT_CATEGORY_LABELS,
   GENDER_LABELS,
@@ -15,7 +15,10 @@ import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import {
   ArrowRight,
+  Buildings,
+  CalendarPlus,
   Campfire,
+  ChartBar,
   CheckCircle,
   Church,
   Clock,
@@ -138,8 +141,14 @@ function DashboardOverview() {
               <span className="rounded-md bg-primary px-2.5 py-1 font-mono-code font-semibold text-primary-foreground">
                 {selected.code}
               </span>
+              {selected.organizer && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-accent/25 bg-accent/10 px-2.5 py-1 font-semibold text-accent">
+                  <Buildings size={13} aria-hidden="true" />
+                  {selected.organizer}
+                </span>
+              )}
               <span className="rounded-md border border-border bg-secondary px-2.5 py-1 font-medium text-secondary-foreground">
-                {EVENT_CATEGORY_LABELS[selected.category] || "Church Event"}
+                {EVENT_CATEGORY_LABELS[selected.category] || "Event"}
               </span>
               {selected.venue && (
                 <span className="inline-flex items-center gap-1 text-muted-foreground">
@@ -176,6 +185,23 @@ function DashboardOverview() {
               >
                 <QrCode size={17} className="text-accent" aria-hidden="true" />
                 <span>Gate check-in desk</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => openEventStudio({ mode: "create" })}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2.5 text-xs font-semibold text-foreground hover:border-accent/40 hover:bg-secondary"
+              >
+                <CalendarPlus size={15} className="text-accent" aria-hidden="true" />
+                <span>New event</span>
+              </button>
+
+              <Link
+                to="/manager"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2.5 text-xs font-semibold text-foreground no-underline hover:border-accent/40 hover:bg-secondary"
+              >
+                <ChartBar size={15} className="text-accent" aria-hidden="true" />
+                <span>Manager</span>
               </Link>
             </div>
           </div>

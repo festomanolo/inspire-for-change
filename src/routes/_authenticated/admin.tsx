@@ -1,17 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useEvents } from "@/hooks/use-events";
+import { openEventStudio, useEvents } from "@/hooks/use-events";
 import { useAuth } from "@/hooks/use-auth";
 import { consolidateEventDuplicates } from "@/lib/json-storage";
 import {
   AGE_GROUP_LABELS,
   EVENT_CATEGORY_LABELS,
-  GENDER_LABELS,
+  EVENT_STATUS_LABELS,
   MINISTRY_ROLE_LABELS,
   formatFullName,
   type AgeGroup,
   type EventCategory,
+  type EventStatus,
   type Guest,
   type GuestEdit,
   type Profile,
@@ -21,6 +22,7 @@ import { toast } from "sonner";
 import {
   ArrowsMerge,
   CalendarBlank,
+  CalendarPlus,
   ChartBar,
   Church,
   ClockCounterClockwise,
@@ -52,8 +54,11 @@ function MinistryAdminPage() {
 
   const [eventConfig, setEventConfig] = useState({
     name: "",
+    organizer: "",
+    code: "",
     year: 2026,
     category: "conference" as EventCategory,
+    status: "active" as EventStatus,
     total_days: 3,
     capacity: 500,
     venue: "",
@@ -95,8 +100,11 @@ function MinistryAdminPage() {
     if (!selected) return;
     setEventConfig({
       name: selected.name,
+      organizer: selected.organizer || "",
+      code: selected.code || "",
       year: selected.year,
       category: selected.category || "conference",
+      status: selected.status || "active",
       total_days: selected.total_days || 3,
       capacity: selected.capacity || 500,
       venue: selected.venue || "",
@@ -161,8 +169,11 @@ function MinistryAdminPage() {
     try {
       await updateEvent(selected.id, {
         name: eventConfig.name,
+        organizer: eventConfig.organizer.trim() || null,
+        code: eventConfig.code.trim().toUpperCase() || selected.code,
         year: eventConfig.year,
         category: eventConfig.category,
+        status: eventConfig.status,
         total_days: Math.max(1, Math.min(14, eventConfig.total_days)),
         capacity: eventConfig.capacity,
         venue: eventConfig.venue || null,
@@ -247,24 +258,41 @@ function MinistryAdminPage() {
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-accent">
             <ShieldCheck size={15} weight="fill" aria-hidden="true" />
-            <span>Ministry operations & governance</span>
+            <span>{selected.organizer || "Event operations & governance"}</span>
           </div>
           <h1 className="mt-1">{selected.name} administration</h1>
         </div>
 
-        {duplicateRowCount > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            disabled={merging}
-            onClick={handleConsolidateDuplicates}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-warm/40 bg-warm/12 px-4 py-2 text-xs font-semibold text-warm hover:bg-warm/18"
+            onClick={() => openEventStudio({ mode: "create" })}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
           >
-            <ArrowsMerge size={15} weight="bold" aria-hidden="true" />
-            {merging
-              ? "Consolidating…"
-              : `Merge ${duplicateRowCount} legacy duplicate row${duplicateRowCount > 1 ? "s" : ""}`}
+            <CalendarPlus size={15} weight="bold" aria-hidden="true" />
+            New event
           </button>
-        )}
+          <Link
+            to="/manager"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground no-underline hover:bg-secondary"
+          >
+            <ChartBar size={15} className="text-accent" aria-hidden="true" />
+            Manager dashboard
+          </Link>
+          {duplicateRowCount > 0 && (
+            <button
+              type="button"
+              disabled={merging}
+              onClick={handleConsolidateDuplicates}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-warm/40 bg-warm/12 px-4 py-2 text-xs font-semibold text-warm hover:bg-warm/18"
+            >
+              <ArrowsMerge size={15} weight="bold" aria-hidden="true" />
+              {merging
+                ? "Consolidating…"
+                : `Merge ${duplicateRowCount} legacy duplicate row${duplicateRowCount > 1 ? "s" : ""}`}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Navigation Tabs */}
@@ -508,9 +536,55 @@ function MinistryAdminPage() {
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                        Host organization / Ministry / Brand
+                      </label>
+                      <input
+                        value={eventConfig.organizer}
+                        onChange={(e) => setEventConfig({ ...eventConfig, organizer: e.target.value })}
+                        placeholder="e.g. Kingdom Youth, Grace Parish, or custom host"
+                        className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                          Badge prefix
+                        </label>
+                        <input
+                          value={eventConfig.code}
+                          onChange={(e) =>
+                            setEventConfig({ ...eventConfig, code: e.target.value.toUpperCase() })
+                          }
+                          className="w-full rounded-xl border border-border bg-input px-3 py-2.5 font-mono-code text-sm uppercase"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                          Status
+                        </label>
+                        <select
+                          value={eventConfig.status}
+                          onChange={(e) =>
+                            setEventConfig({ ...eventConfig, status: e.target.value as EventStatus })
+                          }
+                          className="w-full rounded-xl border border-border bg-input px-2.5 py-2.5 text-sm"
+                        >
+                          {Object.entries(EVENT_STATUS_LABELS).map(([k, lbl]) => (
+                            <option key={k} value={k}>
+                              {lbl}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold text-foreground">
-                      Venue / Sanctuary location
+                      Venue / Location
                     </label>
                     <input
                       value={eventConfig.venue}
@@ -521,7 +595,7 @@ function MinistryAdminPage() {
 
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold text-foreground">
-                      Theme / Scripture subtitle
+                      Theme / Subtitle
                     </label>
                     <input
                       value={eventConfig.subtitle}
@@ -558,7 +632,17 @@ function MinistryAdminPage() {
               {/* All Church Events List + Data Hygiene */}
               <div className="space-y-5 lg:col-span-5">
                 <div className="surface-card p-6">
-                  <h2 className="mb-3 text-base font-bold text-foreground">All church events</h2>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h2 className="text-base font-bold text-foreground">All events</h2>
+                    <button
+                      type="button"
+                      onClick={() => openEventStudio({ mode: "create" })}
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground"
+                    >
+                      <CalendarPlus size={13} weight="bold" aria-hidden="true" />
+                      Add event
+                    </button>
+                  </div>
                   <div className="space-y-2">
                     {events.map((ev) => {
                       const isCurrent = ev.id === selected.id;
@@ -573,13 +657,16 @@ function MinistryAdminPage() {
                               : "border-border bg-secondary/40 text-foreground hover:bg-secondary"
                           }`}
                         >
-                          <div>
-                            <span className="block text-sm font-semibold">{ev.name}</span>
-                            <span className="text-muted-foreground">
+                          <div className="min-w-0 pr-2">
+                            <span className="block truncate text-sm font-semibold">{ev.name}</span>
+                            <span className="block truncate text-muted-foreground">
+                              {ev.organizer ? `${ev.organizer} · ` : ""}
                               {EVENT_CATEGORY_LABELS[ev.category] || "Event"} · {ev.total_days || 3} days
                             </span>
                           </div>
-                          <span className="font-mono-code font-semibold text-accent">{ev.code}</span>
+                          <span className="shrink-0 font-mono-code font-semibold text-accent">
+                            {ev.code}
+                          </span>
                         </button>
                       );
                     })}

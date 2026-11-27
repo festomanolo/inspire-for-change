@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Profile } from "@/lib/types";
 
-export type Profile = {
-  id: string;
-  email: string;
-  display_name: string;
-};
+export type { Profile };
 
 type JsonUser = {
   id: string;
@@ -20,6 +17,7 @@ export function useAuth() {
 
   useEffect(() => {
     let mounted = true;
+    let currentUid: string | null = null;
 
     const loadProfile = async (uid: string) => {
       const { data } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
@@ -28,20 +26,32 @@ export function useAuth() {
 
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
-      setUser((data.session?.user as any) ?? null);
-      if (data.session?.user) loadProfile(data.session.user.id);
+      const u = (data.session?.user as any) ?? null;
+      currentUid = u?.id ?? null;
+      setUser(u);
+      if (u) loadProfile(u.id);
       setLoading(false);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
-      setUser((session?.user as any) ?? null);
-      if (session?.user) loadProfile(session.user.id);
+      const u = (session?.user as any) ?? null;
+      currentUid = u?.id ?? null;
+      setUser(u);
+      if (u) loadProfile(u.id);
       else setProfile(null);
     });
+
+    const ch = supabase
+      .channel("auth-profile-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
+        if (currentUid) loadProfile(currentUid);
+      })
+      .subscribe();
 
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();
+      supabase.removeChannel(ch);
     };
   }, []);
 
