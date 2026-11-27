@@ -386,57 +386,170 @@ function GuestsDirectory() {
                         className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs"
                       />
                     </div>
-                    <input value={editForm.origin || ""} onChange={(e) => setEditForm({ ...editForm, origin: e.target.value })} style={inputCls} placeholder="Origin" />
-                    <input value={editForm.phone || ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={inputCls} placeholder="Phone" />
-                    <select value={editForm.day || ""} onChange={(e) => setEditForm({ ...editForm, day: e.target.value ? parseInt(e.target.value) : null })} style={inputCls}>
-                      <option value="">-</option>
-                      <option value="1">1</option>
-                      <option value="2">2</option>
-                      <option value="3">3</option>
-                    </select>
-                    <select value={editForm.status || "not_camping"} onChange={(e) => setEditForm({ ...editForm, status: e.target.value as "camping" | "not_camping" })} style={inputCls}>
-                      <option value="camping">Camping</option>
-                      <option value="not_camping">Not camping</option>
-                    </select>
-                    <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-                      <button onClick={saveEdit} style={{ padding: "6px 12px", borderRadius: "8px", fontSize: "0.78rem", fontWeight: 600, background: "var(--color-primary)", color: "var(--color-primary-foreground)", border: "none", cursor: "pointer" }}>Save</button>
-                      <button onClick={cancelEdit} style={{ padding: "6px 12px", borderRadius: "8px", fontSize: "0.78rem", background: "var(--color-secondary)", border: "none", cursor: "pointer" }}>Cancel</button>
+                    <div className="col-span-2">
+                      <select
+                        value={editForm.gender || "unspecified"}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, gender: e.target.value as Gender })
+                        }
+                        className="w-full rounded-lg border border-border bg-input px-2 py-1.5 text-xs"
+                      >
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="unspecified">Unspecified</option>
+                      </select>
+                    </div>
+                    <div className="col-span-3 flex gap-1.5">
+                      <input
+                        value={editForm.church_name || ""}
+                        onChange={(e) => setEditForm({ ...editForm, church_name: e.target.value })}
+                        placeholder="Church"
+                        className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs"
+                      />
+                      <input
+                        value={editForm.phone || ""}
+                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                        placeholder="Phone"
+                        className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 font-mono-code text-xs"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <input
+                        value={editForm.origin || ""}
+                        onChange={(e) => setEditForm({ ...editForm, origin: e.target.value })}
+                        placeholder="City / Region"
+                        className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <select
+                        value={editForm.status || "not_camping"}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, status: e.target.value as GuestStatus })
+                        }
+                        className="w-full rounded-lg border border-border bg-input px-1.5 py-1.5 text-xs"
+                      >
+                        <option value="not_camping">Day</option>
+                        <option value="camping">Camp</option>
+                      </select>
+                    </div>
+                    <div className="col-span-1 flex justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={saveEdit}
+                        className="cursor-pointer rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(null)}
+                        className="cursor-pointer rounded-lg bg-secondary px-2 py-1.5 text-xs"
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </div>
                 ) : (
-                  <div style={{
-                    display: "grid", gridTemplateColumns: "3fr 2fr 2fr 60px 130px 110px",
-                    padding: "13px 20px", gap: "8px", alignItems: "center",
-                    transition: "background 0.1s ease", cursor: "default",
-                  }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-secondary)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
-                    <Link to="/guests/$id" params={{ id: g.id }} style={{ fontWeight: 600, fontSize: "0.88rem", textDecoration: "none", color: "var(--color-foreground)", transition: "color 0.1s" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-accent)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-foreground)")}>
-                      {[g.first_name, g.middle_name, g.last_name].filter(Boolean).join(" ")}
-                    </Link>
-                    <div style={{ fontSize: "0.82rem", color: "var(--color-muted-foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.origin}</div>
-                    <div style={{ fontSize: "0.82rem", color: "var(--color-muted-foreground)", fontVariantNumeric: "tabular-nums" }}>{g.phone}</div>
-                    <div>
-                      {g.day ? (
-                        <span style={{ width: "24px", height: "24px", borderRadius: "6px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "oklch(0.55 0.22 258 / 0.1)", color: "var(--color-accent)", fontSize: "0.75rem", fontWeight: 700 }}>{g.day}</span>
-                      ) : <span style={{ color: "var(--color-muted-foreground)" }}>—</span>}
+                  <div className="grid grid-cols-12 items-center gap-3">
+                    <div className="col-span-3 min-w-0">
+                      <Link
+                        to="/guests/$id"
+                        params={{ id: g.id }}
+                        className="block truncate text-sm font-semibold text-foreground no-underline hover:text-accent"
+                      >
+                        {formatFullName(g)}
+                      </Link>
+                      <div className="mt-0.5 flex items-center gap-1.5 font-mono-code text-xs text-muted-foreground">
+                        <span className="font-medium text-accent">{g.reg_code}</span>
+                        <span>·</span>
+                        <span title={g.id}>{g.id.slice(0, 8)}</span>
+                      </div>
                     </div>
-                    <div>
-                      <span style={{
-                        fontSize: "0.72rem", padding: "3px 10px", borderRadius: "9999px", fontWeight: 600,
-                        background: g.status === "camping" ? "oklch(0.55 0.22 258 / 0.1)" : "var(--color-muted)",
-                        color: g.status === "camping" ? "var(--color-accent)" : "var(--color-muted-foreground)",
-                        border: `1px solid ${g.status === "camping" ? "oklch(0.55 0.22 258 / 0.2)" : "var(--color-border)"}`,
-                      }}>
-                        {g.status === "camping" ? "⛺ Camping" : "☀️ Day visitor"}
+
+                    <div className="col-span-2 text-xs">
+                      <span className="font-medium text-foreground">
+                        {GENDER_LABELS[g.gender] || "Not recorded"}
+                      </span>
+                      <span className="block text-muted-foreground">
+                        {MINISTRY_ROLE_LABELS[g.ministry_role] || AGE_GROUP_LABELS[g.age_group]}
                       </span>
                     </div>
-                    <div style={{ display: "flex", gap: "5px", justifyContent: "flex-end" }} className="no-print">
-                      <button onClick={() => startEdit(g)} style={{ padding: "5px 12px", borderRadius: "8px", fontSize: "0.75rem", background: "var(--color-secondary)", border: "1.5px solid var(--color-border)", cursor: "pointer", fontWeight: 500 }}>Edit</button>
-                      <button onClick={() => deleteGuest(g)} style={{ padding: "5px 12px", borderRadius: "8px", fontSize: "0.75rem", background: "oklch(0.58 0.22 27 / 0.08)", border: "1px solid oklch(0.58 0.22 27 / 0.15)", cursor: "pointer", color: "var(--color-destructive)", fontWeight: 500 }}>Delete</button>
+
+                    <div className="col-span-3 min-w-0 text-xs">
+                      <div className="flex items-center gap-1 truncate text-foreground">
+                        <Church size={13} className="shrink-0 text-accent" aria-hidden="true" />
+                        <span className="truncate">{g.church_name || g.origin}</span>
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-1.5 text-muted-foreground">
+                        <span className="font-mono-code">{g.phone || "No phone"}</span>
+                        {g.is_shared_phone && (
+                          <span className="inline-flex items-center gap-0.5 rounded bg-secondary px-1.5 py-0.5 text-xs">
+                            <Users size={11} aria-hidden="true" />
+                            Shared
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="col-span-2 flex flex-wrap gap-1">
+                      {(g.days_registered?.length ? g.days_registered : g.day ? [g.day] : [1]).map(
+                        (d) => {
+                          const checked = isCheckedInForDay(g, d);
+                          return (
+                            <button
+                              key={d}
+                              type="button"
+                              title={checked ? `Checked in Day ${d} (click to undo)` : `Click to check in Day ${d}`}
+                              onClick={() => quickToggleDayCheckIn(g, d)}
+                              className={`inline-flex cursor-pointer items-center gap-1 rounded-md border px-2 py-0.5 font-mono-code text-xs font-semibold ${
+                                checked
+                                  ? "border-success/35 bg-success/12 text-success"
+                                  : "border-border bg-secondary text-foreground hover:border-accent/40"
+                              }`}
+                            >
+                              {checked && <CheckCircle size={11} weight="fill" aria-hidden="true" />}
+                              D{d}
+                            </button>
+                          );
+                        },
+                      )}
+                    </div>
+
+                    <div className="col-span-1">
+                      {g.status === "camping" ? (
+                        <span
+                          title={g.accommodation_zone || "Camping"}
+                          className="inline-flex items-center gap-1 rounded-full bg-warm/12 px-2.5 py-1 text-xs font-semibold text-warm"
+                        >
+                          <Campfire size={13} aria-hidden="true" />
+                          Camp
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                          <SunHorizon size={13} aria-hidden="true" />
+                          Day
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="no-print col-span-1 flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        aria-label={`Edit ${formatFullName(g)}`}
+                        onClick={() => startEdit(g)}
+                        className="cursor-pointer rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      >
+                        <PencilSimple size={15} aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${formatFullName(g)}`}
+                        onClick={() => setConfirmDeleteGuest(g)}
+                        className="cursor-pointer rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/12 hover:text-destructive"
+                      >
+                        <Trash size={15} aria-hidden="true" />
+                      </button>
                     </div>
                   </div>
                 )}
@@ -444,99 +557,147 @@ function GuestsDirectory() {
             ))}
           </ul>
         )}
-        <div style={{ padding: "10px 20px", fontSize: "0.75rem", color: "var(--color-muted-foreground)", borderTop: "1px solid var(--color-border)" }}>
-          Showing {filtered.length} of {guests.length} guests
+
+        <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+          Showing {filtered.length} of {guests.length} registered attendees
         </div>
       </div>
 
-      {/* Mobile card list */}
-      <div className="md:hidden" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+      {/* Mobile & Tablet Card Roster */}
+      <div className="space-y-3 lg:hidden">
         {loading ? (
-          <div style={{ padding: "60px", textAlign: "center", color: "var(--color-muted-foreground)" }}>Loading…</div>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-28 animate-pulse rounded-2xl bg-secondary" />
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
-          <div style={{ padding: "60px", textAlign: "center", color: "var(--color-muted-foreground)" }}>No guests found.</div>
+          <div className="surface-card p-10 text-center text-xs text-muted-foreground">
+            No attendees found matching your filters.
+          </div>
         ) : (
-          filtered.map((g, i) => (
-            <div key={g.id} className={`surface-card fade-in stagger-${Math.min(i + 1, 6)}`} style={{ padding: "14px 16px" }}>
-              {editingId === g.id ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-                    <input value={editForm.first_name || ""} onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })} style={inputCls} placeholder="First name" />
-                    <input value={editForm.last_name || ""} onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })} style={inputCls} placeholder="Last name" />
-                  </div>
-                  <input value={editForm.origin || ""} onChange={(e) => setEditForm({ ...editForm, origin: e.target.value })} style={inputCls} placeholder="Origin" />
-                  <input value={editForm.phone || ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={inputCls} placeholder="Phone" />
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-                    <select value={editForm.day || ""} onChange={(e) => setEditForm({ ...editForm, day: e.target.value ? parseInt(e.target.value) : null })} style={inputCls}>
-                      <option value="">No day</option>
-                      <option value="1">Day 1</option>
-                      <option value="2">Day 2</option>
-                      <option value="3">Day 3</option>
-                    </select>
-                    <select value={editForm.status || "not_camping"} onChange={(e) => setEditForm({ ...editForm, status: e.target.value as "camping" | "not_camping" })} style={inputCls}>
-                      <option value="camping">Camping</option>
-                      <option value="not_camping">Not camping</option>
-                    </select>
-                  </div>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <button onClick={saveEdit} style={{ flex: 1, padding: "9px", borderRadius: "10px", fontSize: "0.85rem", fontWeight: 600, background: "var(--color-primary)", color: "var(--color-primary-foreground)", border: "none", cursor: "pointer" }}>Save</button>
-                    <button onClick={cancelEdit} style={{ flex: 1, padding: "9px", borderRadius: "10px", fontSize: "0.85rem", background: "var(--color-secondary)", border: "none", cursor: "pointer" }}>Cancel</button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "10px" }}>
-                    <div style={{ display: "flex", gap: "10px", alignItems: "center", minWidth: 0 }}>
-                      <div style={{
-                        width: "36px", height: "36px", borderRadius: "50%", flexShrink: 0,
-                        background: "linear-gradient(135deg, oklch(0.55 0.22 258 / 0.15), oklch(0.65 0.2 290 / 0.1))",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)",
-                      }}>
-                        {g.first_name[0]}{g.last_name[0]}
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <Link to="/guests/$id" params={{ id: g.id }} style={{ fontWeight: 700, fontSize: "0.9rem", textDecoration: "none", color: "var(--color-foreground)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {[g.first_name, g.middle_name, g.last_name].filter(Boolean).join(" ")}
-                        </Link>
-                        <div style={{ fontSize: "0.75rem", color: "var(--color-muted-foreground)" }}>{g.origin}</div>
-                      </div>
-                    </div>
-                    <span style={{
-                      fontSize: "0.68rem", padding: "3px 8px", borderRadius: "9999px", fontWeight: 600, flexShrink: 0,
-                      background: g.status === "camping" ? "oklch(0.55 0.22 258 / 0.1)" : "var(--color-muted)",
-                      color: g.status === "camping" ? "var(--color-accent)" : "var(--color-muted-foreground)",
-                      border: `1px solid ${g.status === "camping" ? "oklch(0.55 0.22 258 / 0.2)" : "var(--color-border)"}`,
-                    }}>
-                      {g.status === "camping" ? "⛺" : "☀️"} {g.status === "camping" ? "Camping" : "Day"}
+          filtered.map((g) => (
+            <div key={g.id} className="surface-card space-y-3 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="rounded bg-secondary px-2 py-0.5 font-mono-code text-xs font-semibold text-accent">
+                      {g.reg_code}
                     </span>
+                    {g.gender !== "unspecified" && (
+                      <span className="text-xs text-muted-foreground">{GENDER_LABELS[g.gender]}</span>
+                    )}
                   </div>
+                  <Link
+                    to="/guests/$id"
+                    params={{ id: g.id }}
+                    className="mt-1 block truncate text-base font-bold text-foreground no-underline hover:text-accent"
+                  >
+                    {formatFullName(g)}
+                  </Link>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {g.church_name ? `${g.church_name} · ${g.origin}` : g.origin}
+                  </p>
+                </div>
 
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
-                    <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                      <span style={{ fontSize: "0.78rem", color: "var(--color-muted-foreground)" }}>{g.phone}</span>
-                      {g.day && (
-                        <span style={{ fontSize: "0.72rem", padding: "2px 8px", borderRadius: "6px", fontWeight: 600, background: "oklch(0.55 0.22 258 / 0.08)", color: "var(--color-accent)" }}>
-                          Day {g.day}
-                        </span>
-                      )}
-                    </div>
-                    <div className="no-print" style={{ display: "flex", gap: "6px" }}>
-                      <button onClick={() => startEdit(g)} style={{ padding: "5px 12px", borderRadius: "8px", fontSize: "0.75rem", background: "var(--color-secondary)", border: "1.5px solid var(--color-border)", cursor: "pointer", fontWeight: 500 }}>Edit</button>
-                      <button onClick={() => deleteGuest(g)} style={{ padding: "5px 12px", borderRadius: "8px", fontSize: "0.75rem", background: "oklch(0.58 0.22 27 / 0.08)", border: "1px solid oklch(0.58 0.22 27 / 0.15)", cursor: "pointer", color: "var(--color-destructive)", fontWeight: 500 }}>Delete</button>
-                    </div>
-                  </div>
-                </>
-              )}
+                {g.status === "camping" ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warm/12 px-2.5 py-1 text-xs font-semibold text-warm">
+                    <Campfire size={13} aria-hidden="true" />
+                    Camp
+                  </span>
+                ) : (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                    Day
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(g.days_registered?.length ? g.days_registered : g.day ? [g.day] : [1]).map((d) => {
+                    const checked = isCheckedInForDay(g, d);
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => quickToggleDayCheckIn(g, d)}
+                        className={`inline-flex cursor-pointer items-center gap-1 rounded-md border px-2.5 py-1 font-mono-code text-xs font-semibold ${
+                          checked
+                            ? "border-success/35 bg-success/12 text-success"
+                            : "border-border bg-secondary text-foreground"
+                        }`}
+                      >
+                        {checked && <CheckCircle size={12} weight="fill" aria-hidden="true" />}
+                        Day {d}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="no-print flex items-center gap-2">
+                  <Link
+                    to="/guests/$id"
+                    params={{ id: g.id }}
+                    className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs font-semibold text-foreground no-underline"
+                  >
+                    Badge & details
+                  </Link>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${formatFullName(g)}`}
+                    onClick={() => setConfirmDeleteGuest(g)}
+                    className="cursor-pointer rounded-lg border border-destructive/20 bg-destructive/10 p-1.5 text-destructive"
+                  >
+                    <Trash size={15} aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
             </div>
           ))
         )}
-        {!loading && (
-          <p style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--color-muted-foreground)", padding: "8px 0" }}>
-            Showing {filtered.length} of {guests.length} guests
-          </p>
-        )}
       </div>
+
+      {/* Accessible Delete Confirmation Dialog */}
+      {confirmDeleteGuest && (
+        <div
+          className="no-print fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-xs"
+          onClick={() => setConfirmDeleteGuest(null)}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="del-guest-title"
+            className="bezel-shell scale-in w-full max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bezel-core space-y-4 p-6">
+              <h3 id="del-guest-title" className="text-base font-bold text-foreground">
+                Remove attendee record?
+              </h3>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                This will permanently remove <strong>{formatFullName(confirmDeleteGuest)}</strong> (
+                <span className="font-mono-code">{confirmDeleteGuest.reg_code}</span>) from the active roster.
+              </p>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteGuest(null)}
+                  className="cursor-pointer rounded-full border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground"
+                >
+                  Keep record
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  className="cursor-pointer rounded-full bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground"
+                >
+                  Remove permanently
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
