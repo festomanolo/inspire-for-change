@@ -171,10 +171,13 @@ export const Route = createFileRoute("/api/storage/$")({
           });
         } catch (error: any) {
           console.error("[API POST Error]", error);
-          return new Response(JSON.stringify({ message: error.message || "Internal Server Error" }), {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          });
+          return new Response(
+            JSON.stringify({ message: error.message || "Internal Server Error" }),
+            {
+              status: 500,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
         }
       },
 
@@ -210,13 +213,18 @@ export const Route = createFileRoute("/api/storage/$")({
             });
           }
 
-          return new Response(JSON.stringify({ message: `Route not found: ${splat}` }), { status: 404 });
+          return new Response(JSON.stringify({ message: `Route not found: ${splat}` }), {
+            status: 404,
+          });
         } catch (error: any) {
           console.error("[API PUT Error]", error);
-          return new Response(JSON.stringify({ message: error.message || "Internal Server Error" }), {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          });
+          return new Response(
+            JSON.stringify({ message: error.message || "Internal Server Error" }),
+            {
+              status: 500,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
         }
       },
 
@@ -242,13 +250,18 @@ export const Route = createFileRoute("/api/storage/$")({
             });
           }
 
-          return new Response(JSON.stringify({ message: `Route not found: ${splat}` }), { status: 404 });
+          return new Response(JSON.stringify({ message: `Route not found: ${splat}` }), {
+            status: 404,
+          });
         } catch (error: any) {
           console.error("[API DELETE Error]", error);
-          return new Response(JSON.stringify({ message: error.message || "Internal Server Error" }), {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          });
+          return new Response(
+            JSON.stringify({ message: error.message || "Internal Server Error" }),
+            {
+              status: 500,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
         }
       },
     },
