@@ -29,6 +29,9 @@ function findAvailablePort(startPort) {
       const addr = probe.address();
       const port = typeof addr === "object" && addr ? addr.port : startPort;
       probe.close(() => resolve(String(port)));
+    });
+  });
+}
 
 function prefixStream(stream, label, color) {
   let buffer = "";
