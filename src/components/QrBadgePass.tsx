@@ -71,7 +71,10 @@ export function QrBadgePass({
     <div className="bezel-shell print:border-black print:bg-white">
       <div className="bezel-core relative overflow-hidden p-5 sm:p-6 print:shadow-none">
         {/* Top punch-hole slot visual for physical lanyard aesthetic */}
-        <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-border/80 print:border print:border-neutral-400" aria-hidden="true" />
+        <div
+          className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-border/80 print:border print:border-neutral-400"
+          aria-hidden="true"
+        />
 
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-3">
@@ -85,16 +88,15 @@ export function QrBadgePass({
               </span>
               {guest.gender !== "unspecified" && (
                 <span className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
-                  {GENDER_LABELS[guest.gender]} · {AGE_GROUP_LABELS[guest.age_group] || guest.age_group}
+                  {GENDER_LABELS[guest.gender]} ·{" "}
+                  {AGE_GROUP_LABELS[guest.age_group] || guest.age_group}
                 </span>
               )}
             </div>
 
             <div>
               {event?.organizer && (
-                <p className="text-[11px] font-semibold text-accent">
-                  {event.organizer}
-                </p>
+                <p className="text-[11px] font-semibold text-accent">{event.organizer}</p>
               )}
               <p className="text-xs font-medium text-muted-foreground">
                 {event?.name || "Event Gathering"} {event?.year ? `(${event.year})` : ""}
@@ -146,7 +148,9 @@ export function QrBadgePass({
                   dangerouslySetInnerHTML={{ __html: svgMarkup }}
                 />
               ) : (
-                <span className="font-mono-code text-[11px] text-neutral-500">{guest.reg_code}</span>
+                <span className="font-mono-code text-[11px] text-neutral-500">
+                  {guest.reg_code}
+                </span>
               )}
             </div>
             <button
@@ -163,9 +167,12 @@ export function QrBadgePass({
         {/* Multi-day Attendance & Gate Check-in Strip */}
         <div className="mt-5 border-t border-border pt-4">
           <div className="mb-2 flex items-center justify-between text-xs">
-            <span className="font-medium text-muted-foreground">Registered days & gate verification</span>
+            <span className="font-medium text-muted-foreground">
+              Registered days & gate verification
+            </span>
             <span className="font-mono-code text-muted-foreground">
-              {Object.keys(guest.check_ins ?? {}).length}/{guest.days_registered?.length || 1} checked in
+              {Object.keys(guest.check_ins ?? {}).length}/{guest.days_registered?.length || 1}{" "}
+              checked in
             </span>
           </div>
           <div className="flex flex-wrap gap-1.5">

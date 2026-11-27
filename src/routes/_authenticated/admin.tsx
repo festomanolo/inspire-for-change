@@ -116,7 +116,9 @@ function MinistryAdminPage() {
     const channel = supabase
       .channel("admin-" + selected.id)
       .on("postgres_changes", { event: "*", schema: "public", table: "guests" }, () => loadData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "guest_edits" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "guest_edits" }, () =>
+        loadData(),
+      )
       .subscribe();
 
     return () => {
@@ -232,10 +234,13 @@ function MinistryAdminPage() {
   );
 
   const staffStats = useMemo(() => {
-    const map: Record<string, { name: string; creates: number; checkIns: number; updates: number }> = {};
+    const map: Record<
+      string,
+      { name: string; creates: number; checkIns: number; updates: number }
+    > = {};
     edits.forEach((e) => {
       const id = e.edited_by ?? "system";
-      const name = e.edited_by ? profiles[e.edited_by]?.display_name ?? "Registrar" : "System";
+      const name = e.edited_by ? (profiles[e.edited_by]?.display_name ?? "Registrar") : "System";
       if (!map[id]) map[id] = { name, creates: 0, checkIns: 0, updates: 0 };
       if (e.action === "create") map[id].creates++;
       else if (e.action === "check_in") map[id].checkIns++;
@@ -248,7 +253,11 @@ function MinistryAdminPage() {
   }, [edits, profiles]);
 
   if (!selected) {
-    return <div className="py-16 text-center text-sm text-muted-foreground">Loading ministry operations…</div>;
+    return (
+      <div className="py-16 text-center text-sm text-muted-foreground">
+        Loading ministry operations…
+      </div>
+    );
   }
 
   return (
@@ -349,7 +358,9 @@ function MinistryAdminPage() {
                         ? [{ label: "Legacy (gender unrecorded)", count: unspecifiedGenderCount }]
                         : []),
                     ].map((item) => {
-                      const pct = guests.length ? Math.round((item.count / guests.length) * 100) : 0;
+                      const pct = guests.length
+                        ? Math.round((item.count / guests.length) * 100)
+                        : 0;
                       return (
                         <div key={item.label} className="space-y-1">
                           <div className="flex justify-between">
@@ -415,7 +426,8 @@ function MinistryAdminPage() {
                     <Sparkle size={18} className="text-warm" weight="fill" aria-hidden="true" />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    First-time visitors, visiting guests, and attendees with medical or dietary notes.
+                    First-time visitors, visiting guests, and attendees with medical or dietary
+                    notes.
                   </p>
 
                   {pastoralFollowUps.length === 0 ? (
@@ -471,7 +483,9 @@ function MinistryAdminPage() {
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-xs font-semibold text-foreground">Year</label>
+                      <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                        Year
+                      </label>
                       <input
                         type="number"
                         value={eventConfig.year}
@@ -543,7 +557,9 @@ function MinistryAdminPage() {
                       </label>
                       <input
                         value={eventConfig.organizer}
-                        onChange={(e) => setEventConfig({ ...eventConfig, organizer: e.target.value })}
+                        onChange={(e) =>
+                          setEventConfig({ ...eventConfig, organizer: e.target.value })
+                        }
                         placeholder="e.g. Kingdom Youth, Grace Parish, or custom host"
                         className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm"
                       />
@@ -568,7 +584,10 @@ function MinistryAdminPage() {
                         <select
                           value={eventConfig.status}
                           onChange={(e) =>
-                            setEventConfig({ ...eventConfig, status: e.target.value as EventStatus })
+                            setEventConfig({
+                              ...eventConfig,
+                              status: e.target.value as EventStatus,
+                            })
                           }
                           className="w-full rounded-xl border border-border bg-input px-2.5 py-2.5 text-sm"
                         >
@@ -661,7 +680,8 @@ function MinistryAdminPage() {
                             <span className="block truncate text-sm font-semibold">{ev.name}</span>
                             <span className="block truncate text-muted-foreground">
                               {ev.organizer ? `${ev.organizer} · ` : ""}
-                              {EVENT_CATEGORY_LABELS[ev.category] || "Event"} · {ev.total_days || 3} days
+                              {EVENT_CATEGORY_LABELS[ev.category] || "Event"} · {ev.total_days || 3}{" "}
+                              days
                             </span>
                           </div>
                           <span className="shrink-0 font-mono-code font-semibold text-accent">
@@ -676,7 +696,9 @@ function MinistryAdminPage() {
                 <div className="surface-card space-y-3 p-6">
                   <h2 className="text-base font-bold text-foreground">UUID & data integrity</h2>
                   <p className="text-xs leading-relaxed text-muted-foreground">
-                    Earlier versions created multiple rows when one person attended multiple days. Run consolidation to merge identical attendees into a single canonical UUID record with combined <code className="font-mono-code">days_registered</code>.
+                    Earlier versions created multiple rows when one person attended multiple days.
+                    Run consolidation to merge identical attendees into a single canonical UUID
+                    record with combined <code className="font-mono-code">days_registered</code>.
                   </p>
                   <button
                     type="button"
@@ -721,7 +743,7 @@ function MinistryAdminPage() {
                     <tbody className="divide-y divide-border">
                       {edits.map((e) => {
                         const who = e.edited_by
-                          ? profiles[e.edited_by]?.display_name ?? "Registrar"
+                          ? (profiles[e.edited_by]?.display_name ?? "Registrar")
                           : "System";
                         return (
                           <tr key={e.id} className="hover:bg-secondary/30">
@@ -776,7 +798,9 @@ function MinistryAdminPage() {
           {/* TAB 4: REGISTRAR TEAM */}
           {activeTab === "team" && (
             <div className="fade-in surface-card p-6">
-              <h2 className="mb-1 text-base font-bold text-foreground">Registrar & usher activity</h2>
+              <h2 className="mb-1 text-base font-bold text-foreground">
+                Registrar & usher activity
+              </h2>
               <p className="mb-5 text-xs text-muted-foreground">
                 Registrations, gate check-ins, and record updates handled per team member.
               </p>
@@ -794,10 +818,7 @@ function MinistryAdminPage() {
                     const pct = topTotal > 0 ? Math.round((totalActions / topTotal) * 100) : 100;
 
                     return (
-                      <div
-                        key={id}
-                        className="rounded-xl border border-border bg-secondary/40 p-4"
-                      >
+                      <div key={id} className="rounded-xl border border-border bg-secondary/40 p-4">
                         <div className="mb-2 flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2.5">
                             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary font-mono-code text-xs font-bold text-primary-foreground">
@@ -807,11 +828,17 @@ function MinistryAdminPage() {
                               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                                 <span>{s.name}</span>
                                 {idx === 0 && (
-                                  <Medal size={15} className="text-warm" weight="fill" aria-hidden="true" />
+                                  <Medal
+                                    size={15}
+                                    className="text-warm"
+                                    weight="fill"
+                                    aria-hidden="true"
+                                  />
                                 )}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {s.creates} registered · {s.checkIns} gate check-ins · {s.updates} edits
+                                {s.creates} registered · {s.checkIns} gate check-ins · {s.updates}{" "}
+                                edits
                               </div>
                             </div>
                           </div>

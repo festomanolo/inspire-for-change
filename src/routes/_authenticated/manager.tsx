@@ -26,15 +26,7 @@ import {
 } from "@/lib/types";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   ArrowsMerge,
   ArrowUpRight,
@@ -85,14 +77,7 @@ function statusBadgeClass(status: EventStatus): string {
 }
 
 function ManagerDashboardPage() {
-  const {
-    events,
-    selected,
-    select,
-    updateEvent,
-    duplicateEvent,
-    deleteEvent,
-  } = useEvents();
+  const { events, selected, select, updateEvent, duplicateEvent, deleteEvent } = useEvents();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -134,8 +119,16 @@ function ManagerDashboardPage() {
       .channel("manager-portfolio-sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "events" }, loadPortfolioData)
       .on("postgres_changes", { event: "*", schema: "public", table: "guests" }, loadPortfolioData)
-      .on("postgres_changes", { event: "*", schema: "public", table: "guest_edits" }, loadPortfolioData)
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, loadPortfolioData)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "guest_edits" },
+        loadPortfolioData,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        loadPortfolioData,
+      )
       .subscribe();
 
     return () => {
@@ -217,7 +210,8 @@ function ManagerDashboardPage() {
     const totalRegistered = allGuests.length;
     const totalCapacity = events.reduce((sum, e) => sum + (e.capacity || 500), 0);
     const totalArrived = allGuests.filter((g) => Object.keys(g.check_ins ?? {}).length > 0).length;
-    const arrivalRate = totalRegistered > 0 ? Math.round((totalArrived / totalRegistered) * 100) : 0;
+    const arrivalRate =
+      totalRegistered > 0 ? Math.round((totalArrived / totalRegistered) * 100) : 0;
     const totalCampers = allGuests.filter((g) => g.status === "camping").length;
     const totalVisitors = allGuests.filter(
       (g) => g.ministry_role === "first_timer" || g.ministry_role === "visitor",
@@ -395,8 +389,8 @@ function ManagerDashboardPage() {
     try {
       await updateEvent(ev.id, { status: nextStatus });
       toast.success(`Marked "${ev.name}" as ${EVENT_STATUS_LABELS[nextStatus]}`);
-    } catch (err: any) {
-      toast.error(err?.message || "Could not update event status");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not update event status");
     }
   };
 
@@ -404,8 +398,8 @@ function ManagerDashboardPage() {
     try {
       const cloned = await duplicateEvent(ev);
       toast.success(`Cloned event as "${cloned.name}" (${cloned.code})`);
-    } catch (err: any) {
-      toast.error(err?.message || "Could not duplicate event");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not duplicate event");
     }
   };
 
@@ -417,15 +411,16 @@ function ManagerDashboardPage() {
       await deleteEvent(target.id);
       await loadPortfolioData();
       toast.success(`Deleted event "${target.name}"`);
-    } catch (err: any) {
-      toast.error(err?.message || "Could not delete event");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not delete event");
     }
   };
 
   const handleRoleUpdate = async (staff: Profile, nextRole: StaffRole) => {
     setUpdatingRoleId(staff.id);
     try {
-      const { error } = await (supabase.from("profiles") as any)
+      const { error } = await supabase
+        .from("profiles")
         .update({ role: nextRole })
         .eq("id", staff.id)
         .select()
@@ -433,8 +428,8 @@ function ManagerDashboardPage() {
       if (error) throw new Error(error.message);
       await loadPortfolioData();
       toast.success(`Updated ${staff.display_name} to ${STAFF_ROLE_LABELS[nextRole]}`);
-    } catch (err: any) {
-      toast.error(err?.message || "Could not update staff role");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not update staff role");
     } finally {
       setUpdatingRoleId(null);
     }
@@ -451,8 +446,8 @@ function ManagerDashboardPage() {
         toast.info(`All ${selected.name} attendee UUIDs are already unique`);
       }
       await loadPortfolioData();
-    } catch (err: any) {
-      toast.error(err?.message || "Consolidation failed");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Consolidation failed");
     } finally {
       setMerging(false);
     }
@@ -480,7 +475,8 @@ function ManagerDashboardPage() {
               </div>
               <h1 className="text-foreground">Manager dashboard</h1>
               <p className="max-w-[64ch] text-sm text-muted-foreground">
-                Create, launch, and oversee conferences, camps, seminars, crusades, and partner organization events from one unified operations hub.
+                Create, launch, and oversee conferences, camps, seminars, crusades, and partner
+                organization events from one unified operations hub.
               </p>
             </div>
 
@@ -518,7 +514,8 @@ function ManagerDashboardPage() {
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {portfolioSummary.activeCount} active · {portfolioSummary.upcomingCount} upcoming ·{" "}
-                {portfolioSummary.uniqueOrganizers} host{portfolioSummary.uniqueOrganizers === 1 ? "" : "s"}
+                {portfolioSummary.uniqueOrganizers} host
+                {portfolioSummary.uniqueOrganizers === 1 ? "" : "s"}
               </p>
             </div>
 
@@ -577,7 +574,8 @@ function ManagerDashboardPage() {
             <div className="flex items-center gap-2 text-xs">
               <Buildings size={16} className="shrink-0 text-accent" aria-hidden="true" />
               <span className="font-medium text-foreground">
-                Launch a standalone event for any host ministry, department, seminar, or community brand:
+                Launch a standalone event for any host ministry, department, seminar, or community
+                brand:
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -657,8 +655,15 @@ function ManagerDashboardPage() {
 
                   <div className="h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={crossEventChartData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                      <BarChart
+                        data={crossEventChartData}
+                        margin={{ top: 8, right: 8, left: -18, bottom: 0 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="var(--color-border)"
+                          vertical={false}
+                        />
                         <XAxis
                           dataKey="code"
                           tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
@@ -679,7 +684,11 @@ function ManagerDashboardPage() {
                             fontSize: "12px",
                           }}
                         />
-                        <Bar dataKey="Registered" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
+                        <Bar
+                          dataKey="Registered"
+                          fill="var(--color-primary)"
+                          radius={[6, 6, 0, 0]}
+                        />
                         <Bar dataKey="Arrived" fill="var(--color-accent)" radius={[6, 6, 0, 0]} />
                         <Bar dataKey="Campers" fill="var(--color-warm)" radius={[6, 6, 0, 0]} />
                       </BarChart>
@@ -705,12 +714,17 @@ function ManagerDashboardPage() {
 
                         <div>
                           {selected.organizer && (
-                            <p className="text-xs font-semibold text-accent">{selected.organizer}</p>
+                            <p className="text-xs font-semibold text-accent">
+                              {selected.organizer}
+                            </p>
                           )}
-                          <h2 className="mt-0.5 text-xl font-bold text-foreground">{selected.name}</h2>
+                          <h2 className="mt-0.5 text-xl font-bold text-foreground">
+                            {selected.name}
+                          </h2>
                           <p className="mt-1 text-xs text-muted-foreground">
                             {EVENT_CATEGORY_LABELS[selected.category] || "Event"} ·{" "}
-                            {selected.total_days || 3} day{(selected.total_days || 3) > 1 ? "s" : ""}
+                            {selected.total_days || 3} day
+                            {(selected.total_days || 3) > 1 ? "s" : ""}
                             {selected.venue ? ` · ${selected.venue}` : ""}
                           </p>
                         </div>
@@ -802,7 +816,10 @@ function ManagerDashboardPage() {
                       female: 0,
                     };
                     const cap = ev.capacity || 500;
-                    const utilPct = Math.min(100, Math.round((m.registered / Math.max(cap, 1)) * 100));
+                    const utilPct = Math.min(
+                      100,
+                      Math.round((m.registered / Math.max(cap, 1)) * 100),
+                    );
                     const isSelected = selected?.id === ev.id;
 
                     return (
@@ -902,7 +919,8 @@ function ManagerDashboardPage() {
                     </span>
                     <span className="text-sm font-bold text-foreground">Add another event</span>
                     <span className="max-w-[26ch] text-xs text-muted-foreground">
-                      Set up a new conference, camp, seminar, outreach, or partner organization event
+                      Set up a new conference, camp, seminar, outreach, or partner organization
+                      event
                     </span>
                   </button>
                 </div>
@@ -961,7 +979,9 @@ function ManagerDashboardPage() {
               <div className="surface-card overflow-hidden">
                 {filteredEvents.length === 0 ? (
                   <div className="p-12 text-center">
-                    <p className="text-sm font-semibold text-foreground">No events match your filter</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      No events match your filter
+                    </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Clear your search or launch a new event with the Event Studio.
                     </p>
@@ -1154,12 +1174,20 @@ function ManagerDashboardPage() {
                     Session-by-day attendance vs gate verification
                   </h3>
                   <p className="mb-4 text-xs text-muted-foreground">
-                    Expected registrations vs verified physical check-ins across {selected.total_days || 3} days
+                    Expected registrations vs verified physical check-ins across{" "}
+                    {selected.total_days || 3} days
                   </p>
                   <div className="h-60 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={selectedDailyChartData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                      <BarChart
+                        data={selectedDailyChartData}
+                        margin={{ top: 8, right: 8, left: -18, bottom: 0 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="var(--color-border)"
+                          vertical={false}
+                        />
                         <XAxis
                           dataKey="day"
                           tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
@@ -1180,8 +1208,16 @@ function ManagerDashboardPage() {
                             fontSize: "12px",
                           }}
                         />
-                        <Bar dataKey="Registered" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
-                        <Bar dataKey="Checked in" fill="var(--color-success)" radius={[6, 6, 0, 0]} />
+                        <Bar
+                          dataKey="Registered"
+                          fill="var(--color-primary)"
+                          radius={[6, 6, 0, 0]}
+                        />
+                        <Bar
+                          dataKey="Checked in"
+                          fill="var(--color-success)"
+                          radius={[6, 6, 0, 0]}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1189,7 +1225,9 @@ function ManagerDashboardPage() {
 
                 {/* Gender & Age Breakdown */}
                 <div className="surface-card space-y-4 p-6 lg:col-span-5">
-                  <h3 className="text-base font-bold text-foreground">Demographics & age brackets</h3>
+                  <h3 className="text-base font-bold text-foreground">
+                    Demographics & age brackets
+                  </h3>
                   <div className="space-y-2.5 text-xs">
                     {[
                       { label: "Male", count: selectedAnalytics.male },
@@ -1210,7 +1248,10 @@ function ManagerDashboardPage() {
                             </span>
                           </div>
                           <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                            <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                            <div
+                              className="h-full rounded-full bg-primary"
+                              style={{ width: `${pct}%` }}
+                            />
                           </div>
                         </div>
                       );
@@ -1239,7 +1280,9 @@ function ManagerDashboardPage() {
                 {/* Dormitory & Lodging Zones */}
                 <div className="surface-card space-y-3 p-6">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold text-foreground">Dormitory & lodging zones</h3>
+                    <h3 className="text-base font-bold text-foreground">
+                      Dormitory & lodging zones
+                    </h3>
                     <Campfire size={17} className="text-warm" weight="duotone" aria-hidden="true" />
                   </div>
                   {!selected.camping_enabled ? (
@@ -1247,7 +1290,9 @@ function ManagerDashboardPage() {
                       Day-only event (on-site camping is disabled for this program).
                     </p>
                   ) : selectedAnalytics.dormZones.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No campers assigned to dorm zones yet.</p>
+                    <p className="text-xs text-muted-foreground">
+                      No campers assigned to dorm zones yet.
+                    </p>
                   ) : (
                     <ul className="divide-y divide-border text-xs">
                       {selectedAnalytics.dormZones.map(([zone, count]) => (
@@ -1286,7 +1331,9 @@ function ManagerDashboardPage() {
                 {/* Top Organizations / Parishes / Cities */}
                 <div className="surface-card space-y-3 p-6">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold text-foreground">Parishes, chapters & origins</h3>
+                    <h3 className="text-base font-bold text-foreground">
+                      Parishes, chapters & origins
+                    </h3>
                     <Church size={17} className="text-accent" aria-hidden="true" />
                   </div>
                   {selectedAnalytics.topOrigins.length === 0 ? (
@@ -1320,7 +1367,8 @@ function ManagerDashboardPage() {
                         Staff directory & role governance
                       </h2>
                       <p className="text-xs text-muted-foreground">
-                        Assign manager, administrator, registrar, or gate usher roles across your team
+                        Assign manager, administrator, registrar, or gate usher roles across your
+                        team
                       </p>
                     </div>
                     <span className="font-mono-code text-xs text-muted-foreground">
@@ -1345,12 +1393,17 @@ function ManagerDashboardPage() {
                               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                                 <span>{item.profile.display_name}</span>
                                 {idx === 0 && item.total > 0 && (
-                                  <Medal size={15} className="text-warm" weight="fill" aria-hidden="true" />
+                                  <Medal
+                                    size={15}
+                                    className="text-warm"
+                                    weight="fill"
+                                    aria-hidden="true"
+                                  />
                                 )}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {item.profile.email} · {item.creates} reg · {item.checkIns} check-ins ·{" "}
-                                {item.updates} edits
+                                {item.profile.email} · {item.creates} reg · {item.checkIns}{" "}
+                                check-ins · {item.updates} edits
                               </div>
                             </div>
                           </div>
@@ -1384,7 +1437,8 @@ function ManagerDashboardPage() {
                           Canonical UUID deduplication ({selected.name})
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          Merge any legacy multi-row same-person entries into single multi-day records.
+                          Merge any legacy multi-row same-person entries into single multi-day
+                          records.
                         </span>
                       </div>
                       <button
@@ -1512,7 +1566,7 @@ function ManagerDashboardPage() {
                           const evId = e.event_id || e.guest?.event_id;
                           const ev = evId ? eventMap[evId] : null;
                           const actor = e.edited_by
-                            ? profileMap[e.edited_by]?.display_name ?? "Registrar"
+                            ? (profileMap[e.edited_by]?.display_name ?? "Registrar")
                             : "System";
 
                           return (
@@ -1547,9 +1601,11 @@ function ManagerDashboardPage() {
                                   </Link>
                                 ) : (
                                   <span className="text-muted-foreground">
-                                    {(e.changes as any)?.deleted_guest ||
-                                      (e.changes as any)?.name ||
-                                      "—"}
+                                    {String(
+                                      (e.changes as Record<string, unknown>)?.deleted_guest ||
+                                        (e.changes as Record<string, unknown>)?.name ||
+                                        "—",
+                                    )}
                                   </span>
                                 )}
                               </td>
@@ -1593,7 +1649,8 @@ function ManagerDashboardPage() {
                 <strong className="font-mono-code text-foreground">
                   {eventMetrics.get(confirmDeleteEvent.id)?.registered ?? 0}
                 </strong>{" "}
-                registered attendee record(s). To preserve historical data without active desk clutter, mark the event as <strong>Archived</strong> instead.
+                registered attendee record(s). To preserve historical data without active desk
+                clutter, mark the event as <strong>Archived</strong> instead.
               </p>
               <div className="flex justify-end gap-2 pt-2">
                 <button

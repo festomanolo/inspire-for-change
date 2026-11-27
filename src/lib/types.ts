@@ -180,9 +180,7 @@ export function suggestAccommodationZone(
   return "General Campgrounds";
 }
 
-export function formatFullName(
-  g: Pick<Guest, "first_name" | "middle_name" | "last_name">,
-): string {
+export function formatFullName(g: Pick<Guest, "first_name" | "middle_name" | "last_name">): string {
   return [g.first_name, g.middle_name, g.last_name]
     .filter(Boolean)
     .map((part) => (part ?? "").trim())

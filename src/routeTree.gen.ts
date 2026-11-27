@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedRegisterRouteImport } from './routes/_authenticated/register'
+import { Route as AuthenticatedManagerRouteImport } from './routes/_authenticated/manager'
 import { Route as AuthenticatedGuestsRouteImport } from './routes/_authenticated/guests'
 import { Route as AuthenticatedCheckinRouteImport } from './routes/_authenticated/checkin'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -36,6 +37,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const AuthenticatedRegisterRoute = AuthenticatedRegisterRouteImport.update({
   id: '/register',
   path: '/register',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedManagerRoute = AuthenticatedManagerRouteImport.update({
+  id: '/manager',
+  path: '/manager',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedGuestsRoute = AuthenticatedGuestsRouteImport.update({
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRoute
   '/checkin': typeof AuthenticatedCheckinRoute
   '/guests': typeof AuthenticatedGuestsRouteWithChildren
+  '/manager': typeof AuthenticatedManagerRoute
   '/register': typeof AuthenticatedRegisterRoute
   '/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/api/storage/$': typeof ApiStorageSplatRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminRoute
   '/checkin': typeof AuthenticatedCheckinRoute
   '/guests': typeof AuthenticatedGuestsRouteWithChildren
+  '/manager': typeof AuthenticatedManagerRoute
   '/register': typeof AuthenticatedRegisterRoute
   '/': typeof AuthenticatedIndexRoute
   '/guests/$id': typeof AuthenticatedGuestsIdRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/checkin': typeof AuthenticatedCheckinRoute
   '/_authenticated/guests': typeof AuthenticatedGuestsRouteWithChildren
+  '/_authenticated/manager': typeof AuthenticatedManagerRoute
   '/_authenticated/register': typeof AuthenticatedRegisterRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/guests/$id': typeof AuthenticatedGuestsIdRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/checkin'
     | '/guests'
+    | '/manager'
     | '/register'
     | '/guests/$id'
     | '/api/storage/$'
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/checkin'
     | '/guests'
+    | '/manager'
     | '/register'
     | '/'
     | '/guests/$id'
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/checkin'
     | '/_authenticated/guests'
+    | '/_authenticated/manager'
     | '/_authenticated/register'
     | '/_authenticated/'
     | '/_authenticated/guests/$id'
@@ -164,6 +176,13 @@ declare module '@tanstack/react-router' {
       path: '/register'
       fullPath: '/register'
       preLoaderRoute: typeof AuthenticatedRegisterRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/manager': {
+      id: '/_authenticated/manager'
+      path: '/manager'
+      fullPath: '/manager'
+      preLoaderRoute: typeof AuthenticatedManagerRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/guests': {
@@ -219,6 +238,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedCheckinRoute: typeof AuthenticatedCheckinRoute
   AuthenticatedGuestsRoute: typeof AuthenticatedGuestsRouteWithChildren
+  AuthenticatedManagerRoute: typeof AuthenticatedManagerRoute
   AuthenticatedRegisterRoute: typeof AuthenticatedRegisterRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
@@ -227,6 +247,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedCheckinRoute: AuthenticatedCheckinRoute,
   AuthenticatedGuestsRoute: AuthenticatedGuestsRouteWithChildren,
+  AuthenticatedManagerRoute: AuthenticatedManagerRoute,
   AuthenticatedRegisterRoute: AuthenticatedRegisterRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }

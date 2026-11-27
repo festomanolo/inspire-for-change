@@ -51,7 +51,9 @@ export const Route = createFileRoute("/api/storage/$")({
           }
 
           if (splat === "guests") {
-            const keys = Array.from(searchParams.keys()).filter((k) => k !== "orderBy" && k !== "asc" && k !== "limit");
+            const keys = Array.from(searchParams.keys()).filter(
+              (k) => k !== "orderBy" && k !== "asc" && k !== "limit",
+            );
             const field = keys[0];
             const orderBy = searchParams.get("orderBy") || undefined;
             const asc = searchParams.get("asc") !== "false";
@@ -95,13 +97,18 @@ export const Route = createFileRoute("/api/storage/$")({
             });
           }
 
-          return new Response(JSON.stringify({ message: `Route not found: ${splat}` }), { status: 404 });
+          return new Response(JSON.stringify({ message: `Route not found: ${splat}` }), {
+            status: 404,
+          });
         } catch (error: any) {
           console.error("[API GET Error]", error);
-          return new Response(JSON.stringify({ message: error.message || "Internal Server Error" }), {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          });
+          return new Response(
+            JSON.stringify({ message: error.message || "Internal Server Error" }),
+            {
+              status: 500,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
         }
       },
 
@@ -159,13 +166,18 @@ export const Route = createFileRoute("/api/storage/$")({
             });
           }
 
-          return new Response(JSON.stringify({ message: `Route not found: ${splat}` }), { status: 404 });
+          return new Response(JSON.stringify({ message: `Route not found: ${splat}` }), {
+            status: 404,
+          });
         } catch (error: any) {
           console.error("[API POST Error]", error);
-          return new Response(JSON.stringify({ message: error.message || "Internal Server Error" }), {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          });
+          return new Response(
+            JSON.stringify({ message: error.message || "Internal Server Error" }),
+            {
+              status: 500,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
         }
       },
 
@@ -201,13 +213,18 @@ export const Route = createFileRoute("/api/storage/$")({
             });
           }
 
-          return new Response(JSON.stringify({ message: `Route not found: ${splat}` }), { status: 404 });
+          return new Response(JSON.stringify({ message: `Route not found: ${splat}` }), {
+            status: 404,
+          });
         } catch (error: any) {
           console.error("[API PUT Error]", error);
-          return new Response(JSON.stringify({ message: error.message || "Internal Server Error" }), {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          });
+          return new Response(
+            JSON.stringify({ message: error.message || "Internal Server Error" }),
+            {
+              status: 500,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
         }
       },
 
@@ -233,13 +250,18 @@ export const Route = createFileRoute("/api/storage/$")({
             });
           }
 
-          return new Response(JSON.stringify({ message: `Route not found: ${splat}` }), { status: 404 });
+          return new Response(JSON.stringify({ message: `Route not found: ${splat}` }), {
+            status: 404,
+          });
         } catch (error: any) {
           console.error("[API DELETE Error]", error);
-          return new Response(JSON.stringify({ message: error.message || "Internal Server Error" }), {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          });
+          return new Response(
+            JSON.stringify({ message: error.message || "Internal Server Error" }),
+            {
+              status: 500,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
         }
       },
     },

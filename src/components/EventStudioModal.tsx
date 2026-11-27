@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  EVENT_STUDIO_BUS,
-  useEvents,
-  type EventStudioDetail,
-} from "@/hooks/use-events";
+import { EVENT_STUDIO_BUS, useEvents, type EventStudioDetail } from "@/hooks/use-events";
 import {
   EVENT_CATEGORY_LABELS,
   EVENT_STATUS_LABELS,
@@ -223,7 +219,9 @@ export function EventStudioModal() {
   const previewBadgeCode = useMemo(() => {
     const rawPrefix =
       form.code.trim() ||
-      (form.name.trim() ? buildSuggestedEventCode(form.name, form.year) : `EVT-${String(form.year).slice(-2)}`);
+      (form.name.trim()
+        ? buildSuggestedEventCode(form.name, form.year)
+        : `EVT-${String(form.year).slice(-2)}`);
     return `${rawPrefix.toUpperCase().replace(/[^A-Z0-9-]/g, "")}-0001`;
   }, [form.code, form.name, form.year]);
 
@@ -236,7 +234,10 @@ export function EventStudioModal() {
 
     setSaving(true);
     try {
-      const cleanCode = form.code.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
+      const cleanCode = form.code
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9-]/g, "");
       if (mode === "edit" && editingEvent) {
         const updated = await updateEvent(editingEvent.id, {
           name: form.name.trim(),
@@ -275,8 +276,8 @@ export function EventStudioModal() {
         );
       }
       setOpen(false);
-    } catch (err: any) {
-      toast.error(err?.message || "Could not save event");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not save event");
     } finally {
       setSaving(false);
     }
@@ -296,19 +297,28 @@ export function EventStudioModal() {
         className="bezel-shell scale-in my-auto w-full max-w-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <form onSubmit={handleSubmit} className="bezel-core max-h-[90dvh] space-y-5 overflow-y-auto p-6 sm:p-7">
+        <form
+          onSubmit={handleSubmit}
+          className="bezel-core max-h-[90dvh] space-y-5 overflow-y-auto p-6 sm:p-7"
+        >
           {/* Header */}
           <div className="flex items-start justify-between gap-3 border-b border-border pb-4">
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold text-accent">
                 <CalendarPlus size={15} weight="fill" aria-hidden="true" />
-                <span>{mode === "edit" ? "Event configuration" : "Multi-program event studio"}</span>
+                <span>
+                  {mode === "edit" ? "Event configuration" : "Multi-program event studio"}
+                </span>
               </div>
-              <h2 id="event-studio-title" className="mt-1 text-lg font-bold text-foreground sm:text-xl">
+              <h2
+                id="event-studio-title"
+                className="mt-1 text-lg font-bold text-foreground sm:text-xl"
+              >
                 {mode === "edit" ? `Edit ${editingEvent?.name}` : "Create new event or gathering"}
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Host any conference, camp, seminar, outreach, or partner ministry event — not limited to Inspired for Change.
+                Host any conference, camp, seminar, outreach, or partner ministry event — not
+                limited to Inspired for Change.
               </p>
             </div>
             <button
@@ -353,7 +363,10 @@ export function EventStudioModal() {
           {/* Row 1: Event Title & Host Organization */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="ev-studio-name" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-name"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Event title <span className="text-accent">*</span>
               </label>
               <input
@@ -368,7 +381,10 @@ export function EventStudioModal() {
             </div>
 
             <div>
-              <label htmlFor="ev-studio-org" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-org"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Host organization / Ministry / Brand
               </label>
               <div className="relative">
@@ -397,7 +413,10 @@ export function EventStudioModal() {
           {/* Row 2: Badge Prefix, Category, Lifecycle Status */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <label htmlFor="ev-studio-code" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-code"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Badge code prefix
               </label>
               <input
@@ -418,7 +437,10 @@ export function EventStudioModal() {
             </div>
 
             <div>
-              <label htmlFor="ev-studio-cat" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-cat"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Event category
               </label>
               <select
@@ -436,7 +458,10 @@ export function EventStudioModal() {
             </div>
 
             <div>
-              <label htmlFor="ev-studio-status" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-status"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Lifecycle status
               </label>
               <select
@@ -457,7 +482,10 @@ export function EventStudioModal() {
           {/* Row 3: Dates, Year, Duration & Target Capacity */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
-              <label htmlFor="ev-studio-start" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-start"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Start date
               </label>
               <input
@@ -470,7 +498,10 @@ export function EventStudioModal() {
             </div>
 
             <div>
-              <label htmlFor="ev-studio-end" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-end"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 End date
               </label>
               <input
@@ -484,7 +515,10 @@ export function EventStudioModal() {
             </div>
 
             <div>
-              <label htmlFor="ev-studio-days" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-days"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Total days
               </label>
               <input
@@ -499,7 +533,10 @@ export function EventStudioModal() {
             </div>
 
             <div>
-              <label htmlFor="ev-studio-cap" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-cap"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Target capacity
               </label>
               <input
@@ -517,7 +554,10 @@ export function EventStudioModal() {
           {/* Row 4: Venue & Year + Subtitle */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="sm:col-span-2">
-              <label htmlFor="ev-studio-venue" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-venue"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Venue / Location
               </label>
               <input
@@ -530,7 +570,10 @@ export function EventStudioModal() {
             </div>
 
             <div>
-              <label htmlFor="ev-studio-year" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-year"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Event year
               </label>
               <input
@@ -546,8 +589,12 @@ export function EventStudioModal() {
           </div>
 
           <div>
-            <label htmlFor="ev-studio-subtitle" className="mb-1.5 block text-xs font-semibold text-foreground">
-              Theme, tagline, or program description <span className="font-normal text-muted-foreground">(optional)</span>
+            <label
+              htmlFor="ev-studio-subtitle"
+              className="mb-1.5 block text-xs font-semibold text-foreground"
+            >
+              Theme, tagline, or program description{" "}
+              <span className="font-normal text-muted-foreground">(optional)</span>
             </label>
             <input
               id="ev-studio-subtitle"
@@ -561,7 +608,12 @@ export function EventStudioModal() {
           {/* Camping & Lodging Toggle */}
           <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border bg-secondary/55 px-4 py-3 text-xs">
             <div className="flex items-center gap-2.5">
-              <Campfire size={17} className="shrink-0 text-warm" weight="duotone" aria-hidden="true" />
+              <Campfire
+                size={17}
+                className="shrink-0 text-warm"
+                weight="duotone"
+                aria-hidden="true"
+              />
               <div>
                 <span className="block font-semibold text-foreground">
                   Enable on-site camping & dormitory allocation

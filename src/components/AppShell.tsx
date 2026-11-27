@@ -4,11 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { openEventStudio, useEvents } from "@/hooks/use-events";
 import { useState, useEffect, useRef } from "react";
 import { exportAllDataToCSV } from "@/lib/csv-export";
-import {
-  EVENT_STATUS_LABELS,
-  STAFF_ROLE_LABELS,
-  type EventStatus,
-} from "@/lib/types";
+import { EVENT_STATUS_LABELS, STAFF_ROLE_LABELS, type EventStatus } from "@/lib/types";
 import { EventStudioModal } from "@/components/EventStudioModal";
 import { toast } from "sonner";
 import {
@@ -117,7 +113,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
   const activeBrandTitle = selected?.organizer?.trim() || "Inspired for Change";
   const hasCustomOrganizer = Boolean(
     selected?.organizer?.trim() &&
-      selected.organizer.trim().toLowerCase() !== "inspired for change",
+    selected.organizer.trim().toLowerCase() !== "inspired for change",
   );
 
   return (
@@ -200,7 +196,11 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
                     />
                     <span className="font-mono-code text-[11px] text-accent">{selected.code}</span>
                     <span className="truncate">{selected.name}</span>
-                    <CaretDown size={12} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <CaretDown
+                      size={12}
+                      className="shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
                   </button>
 
                   {switcherOpen && (
@@ -259,7 +259,12 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
                                   {ev.code}
                                 </span>
                                 {isCurrent && (
-                                  <Check size={13} className="text-primary" weight="bold" aria-hidden="true" />
+                                  <Check
+                                    size={13}
+                                    className="text-primary"
+                                    weight="bold"
+                                    aria-hidden="true"
+                                  />
                                 )}
                               </div>
                             </button>
@@ -302,7 +307,11 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
               aria-label={darkMode ? "Switch to light theme" : "Switch to dark theme"}
               className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground"
             >
-              {darkMode ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
+              {darkMode ? (
+                <Sun size={16} aria-hidden="true" />
+              ) : (
+                <Moon size={16} aria-hidden="true" />
+              )}
             </button>
 
             {/* Staff Account Menu */}

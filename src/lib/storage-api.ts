@@ -13,7 +13,8 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.join(__dirname, "../../data");
+const cwdDataDir = path.resolve(process.cwd(), "data");
+const DATA_DIR = fs.existsSync(cwdDataDir) ? cwdDataDir : path.resolve(__dirname, "../../data");
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -52,7 +53,9 @@ function buildEventCode(name: string, year: number): string {
   return buildSuggestedEventCode(name, year);
 }
 
-function normalizeEvent(raw: Partial<EventRow> & { id: string; year: number; name: string; created_at: string }): EventRow {
+function normalizeEvent(
+  raw: Partial<EventRow> & { id: string; year: number; name: string; created_at: string },
+): EventRow {
   return {
     id: raw.id,
     code: raw.code?.trim() || buildEventCode(raw.name, raw.year),
@@ -82,11 +85,14 @@ function normalizeGuest(
   fallbackIndex: number,
   eventCodeMap: Record<string, string>,
 ): Guest {
-  const days = Array.isArray(raw.days_registered) && raw.days_registered.length > 0
-    ? Array.from(new Set(raw.days_registered.filter((d) => typeof d === "number" && d >= 1))).sort((a, b) => a - b)
-    : typeof raw.day === "number" && raw.day >= 1
-      ? [raw.day]
-      : [1];
+  const days =
+    Array.isArray(raw.days_registered) && raw.days_registered.length > 0
+      ? Array.from(
+          new Set(raw.days_registered.filter((d) => typeof d === "number" && d >= 1)),
+        ).sort((a, b) => a - b)
+      : typeof raw.day === "number" && raw.day >= 1
+        ? [raw.day]
+        : [1];
 
   const gender = raw.gender === "male" || raw.gender === "female" ? raw.gender : "unspecified";
   const status = raw.status === "camping" ? "camping" : "not_camping";
@@ -213,7 +219,11 @@ export const authHandlers = {
     return session;
   },
 
-  signUp: (params: { email: string; password: string; options?: { data?: { display_name?: string } } }) => {
+  signUp: (params: {
+    email: string;
+    password: string;
+    options?: { data?: { display_name?: string } };
+  }) => {
     const { email, options } = params;
     const profiles = readJson<Profile[]>(FILES.profiles, []);
 
@@ -394,7 +404,9 @@ export const dbHandlers = {
 
     getById: (id: string) => {
       const guests = loadNormalizedGuests();
-      const guest = guests.find((g) => g.id === id || g.reg_code.toLowerCase() === id.toLowerCase());
+      const guest = guests.find(
+        (g) => g.id === id || g.reg_code.toLowerCase() === id.toLowerCase(),
+      );
       if (!guest) throw new Error("Guest not found");
       return guest;
     },
@@ -418,11 +430,12 @@ export const dbHandlers = {
       }
 
       const now = new Date().toISOString();
-      const days = Array.isArray(row.days_registered) && row.days_registered.length > 0
-        ? Array.from(new Set(row.days_registered)).sort((a, b) => a - b)
-        : typeof row.day === "number" && row.day >= 1
-          ? [row.day]
-          : [1];
+      const days =
+        Array.isArray(row.days_registered) && row.days_registered.length > 0
+          ? Array.from(new Set(row.days_registered)).sort((a, b) => a - b)
+          : typeof row.day === "number" && row.day >= 1
+            ? [row.day]
+            : [1];
 
       const gender = row.gender === "male" || row.gender === "female" ? row.gender : "unspecified";
       const status = row.status === "camping" ? "camping" : "not_camping";
@@ -486,13 +499,16 @@ export const dbHandlers = {
       if (index === -1) throw new Error("Guest not found");
 
       const prev = guests[index];
-      const nextDays = Array.isArray(updates.days_registered) && updates.days_registered.length > 0
-        ? Array.from(new Set(updates.days_registered)).sort((a, b) => a - b)
-        : updates.day !== undefined
-          ? updates.day
-            ? Array.from(new Set([...(prev.days_registered || []), updates.day])).sort((a, b) => a - b)
-            : prev.days_registered
-          : prev.days_registered;
+      const nextDays =
+        Array.isArray(updates.days_registered) && updates.days_registered.length > 0
+          ? Array.from(new Set(updates.days_registered)).sort((a, b) => a - b)
+          : updates.day !== undefined
+            ? updates.day
+              ? Array.from(new Set([...(prev.days_registered || []), updates.day])).sort(
+                  (a, b) => a - b,
+                )
+              : prev.days_registered
+            : prev.days_registered;
 
       const nextGender = updates.gender ?? prev.gender;
       const nextStatus = updates.status ?? prev.status;
@@ -608,7 +624,8 @@ export const dbHandlers = {
           dup.days_registered.forEach((d) => mergedDays.add(d));
           if (dup.day) mergedDays.add(dup.day);
           Object.assign(mergedCheckIns, dup.check_ins);
-          if (primary.gender === "unspecified" && dup.gender !== "unspecified") primary.gender = dup.gender;
+          if (primary.gender === "unspecified" && dup.gender !== "unspecified")
+            primary.gender = dup.gender;
           if (!primary.church_name && dup.church_name) primary.church_name = dup.church_name;
           if (dup.status === "camping") primary.status = "camping";
           mergedCount++;
