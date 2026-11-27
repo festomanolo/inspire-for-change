@@ -13,7 +13,8 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.join(__dirname, "../../data");
+const cwdDataDir = path.resolve(process.cwd(), "data");
+const DATA_DIR = fs.existsSync(cwdDataDir) ? cwdDataDir : path.resolve(__dirname, "../../data");
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -52,7 +53,9 @@ function buildEventCode(name: string, year: number): string {
   return buildSuggestedEventCode(name, year);
 }
 
-function normalizeEvent(raw: Partial<EventRow> & { id: string; year: number; name: string; created_at: string }): EventRow {
+function normalizeEvent(
+  raw: Partial<EventRow> & { id: string; year: number; name: string; created_at: string },
+): EventRow {
   return {
     id: raw.id,
     code: raw.code?.trim() || buildEventCode(raw.name, raw.year),
@@ -82,11 +85,14 @@ function normalizeGuest(
   fallbackIndex: number,
   eventCodeMap: Record<string, string>,
 ): Guest {
-  const days = Array.isArray(raw.days_registered) && raw.days_registered.length > 0
-    ? Array.from(new Set(raw.days_registered.filter((d) => typeof d === "number" && d >= 1))).sort((a, b) => a - b)
-    : typeof raw.day === "number" && raw.day >= 1
-      ? [raw.day]
-      : [1];
+  const days =
+    Array.isArray(raw.days_registered) && raw.days_registered.length > 0
+      ? Array.from(
+          new Set(raw.days_registered.filter((d) => typeof d === "number" && d >= 1)),
+        ).sort((a, b) => a - b)
+      : typeof raw.day === "number" && raw.day >= 1
+        ? [raw.day]
+        : [1];
 
   const gender = raw.gender === "male" || raw.gender === "female" ? raw.gender : "unspecified";
   const status = raw.status === "camping" ? "camping" : "not_camping";
@@ -213,7 +219,11 @@ export const authHandlers = {
     return session;
   },
 
-  signUp: (params: { email: string; password: string; options?: { data?: { display_name?: string } } }) => {
+  signUp: (params: {
+    email: string;
+    password: string;
+    options?: { data?: { display_name?: string } };
+  }) => {
     const { email, options } = params;
     const profiles = readJson<Profile[]>(FILES.profiles, []);
 
