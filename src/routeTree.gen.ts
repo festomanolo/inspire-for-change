@@ -113,6 +113,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/checkin'
     | '/guests'
+    | '/manager'
     | '/register'
     | '/guests/$id'
     | '/api/storage/$'
@@ -122,6 +123,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/checkin'
     | '/guests'
+    | '/manager'
     | '/register'
     | '/'
     | '/guests/$id'
@@ -133,6 +135,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/checkin'
     | '/_authenticated/guests'
+    | '/_authenticated/manager'
     | '/_authenticated/register'
     | '/_authenticated/'
     | '/_authenticated/guests/$id'
@@ -173,6 +176,13 @@ declare module '@tanstack/react-router' {
       path: '/register'
       fullPath: '/register'
       preLoaderRoute: typeof AuthenticatedRegisterRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/manager': {
+      id: '/_authenticated/manager'
+      path: '/manager'
+      fullPath: '/manager'
+      preLoaderRoute: typeof AuthenticatedManagerRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/guests': {
@@ -228,6 +238,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedCheckinRoute: typeof AuthenticatedCheckinRoute
   AuthenticatedGuestsRoute: typeof AuthenticatedGuestsRouteWithChildren
+  AuthenticatedManagerRoute: typeof AuthenticatedManagerRoute
   AuthenticatedRegisterRoute: typeof AuthenticatedRegisterRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
@@ -236,6 +247,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedCheckinRoute: AuthenticatedCheckinRoute,
   AuthenticatedGuestsRoute: AuthenticatedGuestsRouteWithChildren,
+  AuthenticatedManagerRoute: AuthenticatedManagerRoute,
   AuthenticatedRegisterRoute: AuthenticatedRegisterRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
