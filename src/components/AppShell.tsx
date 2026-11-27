@@ -16,10 +16,10 @@ import {
   CalendarPlus,
   CaretDown,
   ChartBar,
+  Check,
   Church,
   DownloadSimple,
   House,
-  ListChecks,
   Moon,
   Plus,
   QrCode,
@@ -28,7 +28,6 @@ import {
   Sun,
   UserPlus,
   UsersThree,
-  X,
 } from "@phosphor-icons/react";
 
 const NAV_ITEMS = [
