@@ -99,6 +99,7 @@ export async function exportGuestsToCSV(eventId?: string): Promise<void> {
     "reg_code",
     "event_code",
     "event_name",
+    "event_organizer",
     "event_year",
     "first_name",
     "middle_name",
