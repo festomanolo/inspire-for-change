@@ -163,57 +163,88 @@ function GuestsDirectory() {
       } as any)
       .eq("id", editingId);
 
-    if (err) { toast.error("Failed to update guest"); return; }
-    toast.success("Guest updated successfully");
+    if (err) {
+      toast.error("Failed to save changes");
+      return;
+    }
+    toast.success("Attendee updated");
     setEditingId(null);
     setEditForm({});
+    await loadGuests();
   };
 
-  const deleteGuest = async (guest: Guest) => {
-    if (!confirm(`Delete ${guest.first_name} ${guest.last_name}? This cannot be undone.`)) return;
-    const { error: err } = await supabase.from("guests").delete().eq("id", guest.id);
-    if (err) { toast.error("Failed to delete guest"); return; }
-    toast.success("Guest deleted");
+  const confirmDelete = async () => {
+    if (!confirmDeleteGuest) return;
+    const target = confirmDeleteGuest;
+    setConfirmDeleteGuest(null);
+    const { error: err } = await supabase.from("guests").delete().eq("id", target.id);
+    if (err) {
+      toast.error("Failed to remove attendee");
+      return;
+    }
+    toast.success(`Removed ${formatFullName(target)}`);
+    await loadGuests();
   };
 
-  const inputCls: React.CSSProperties = {
-    width: "100%", padding: "7px 10px", borderRadius: "8px",
-    background: "var(--color-input)", border: "1.5px solid var(--color-border)",
-    fontSize: "0.82rem", color: "var(--color-foreground)",
+  const quickToggleDayCheckIn = async (guest: Guest, dayNum: number) => {
+    if (!user) return;
+    const checked = isCheckedInForDay(guest, dayNum);
+    const nextCheckIns = { ...(guest.check_ins ?? {}) };
+    const nextDays = new Set<number>(guest.days_registered ?? [1]);
+    if (checked) {
+      delete nextCheckIns[String(dayNum)];
+    } else {
+      nextCheckIns[String(dayNum)] = new Date().toISOString();
+      nextDays.add(dayNum);
+    }
+
+    const { error } = await supabase
+      .from("guests")
+      .update({
+        check_ins: nextCheckIns as any,
+        days_registered: Array.from(nextDays).sort((a, b) => a - b),
+        updated_by: user.id,
+      } as any)
+      .eq("id", guest.id);
+
+    if (error) {
+      toast.error("Could not update check-in");
+      return;
+    }
+    await loadGuests();
   };
+
+  const maleCount = guests.filter((g) => g.gender === "male").length;
+  const femaleCount = guests.filter((g) => g.gender === "female").length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-      {/* Header */}
-      <div className="no-print slide-up" style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: "12px" }}>
+    <div className="space-y-5">
+      {/* Directory Header */}
+      <div className="no-print flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p style={{ fontSize: "0.8rem", color: "var(--color-muted-foreground)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            {selected?.name}
+          <p className="text-xs font-medium text-muted-foreground">
+            {selected?.name} · {guests.length} registered ({maleCount} male, {femaleCount} female)
           </p>
-          <h1 style={{ marginTop: "2px" }}>Guests</h1>
+          <h1 className="mt-1">Attendee directory</h1>
         </div>
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        <div className="flex flex-wrap items-center gap-2">
           <button
             id="export-csv-btn"
-            onClick={exportCsv}
-            style={{
-              padding: "9px 16px", borderRadius: "9999px", fontSize: "0.82rem",
-              background: "var(--color-secondary)", border: "1.5px solid var(--color-border)",
-              cursor: "pointer", fontWeight: 500, color: "var(--color-foreground)",
-            }}
+            type="button"
+            onClick={handleExportCsv}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-secondary"
           >
-            ↓ CSV
+            <DownloadSimple size={15} className="text-accent" aria-hidden="true" />
+            Export CSV
           </button>
           <button
             id="print-btn"
+            type="button"
             onClick={() => window.print()}
-            style={{
-              padding: "9px 16px", borderRadius: "9999px", fontSize: "0.82rem",
-              background: "linear-gradient(135deg, oklch(0.28 0.06 255), oklch(0.55 0.22 258))",
-              border: "none", cursor: "pointer", fontWeight: 600, color: "white",
-            }}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-secondary"
           >
-            🖨 Print
+            <Printer size={15} className="text-accent" aria-hidden="true" />
+            Print roster
           </button>
         </div>
       </div>
