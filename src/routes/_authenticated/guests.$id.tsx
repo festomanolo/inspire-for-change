@@ -259,28 +259,32 @@ function GuestDetailPage() {
           <h2 className="text-base font-bold text-foreground">Attendee & ministry details</h2>
           {!editing ? (
             <button
+              type="button"
               onClick={() => setEditing(true)}
-              className="text-sm text-accent hover:underline"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-secondary px-3.5 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
             >
-              Edit
+              <PencilSimple size={14} aria-hidden="true" />
+              Edit record
             </button>
           ) : (
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={() => {
                   setEditing(false);
                   setForm(guest);
                 }}
-                className="text-sm text-muted-foreground hover:text-foreground"
+                className="cursor-pointer rounded-full border border-border bg-secondary px-3.5 py-1.5 text-xs font-semibold text-foreground"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 disabled={saving}
-                onClick={save}
-                className="text-sm px-4 py-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                onClick={saveChanges}
+                className="cursor-pointer rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
               >
-                {saving ? "Saving…" : "Save"}
+                {saving ? "Saving…" : "Save changes"}
               </button>
             </div>
           )}
@@ -288,69 +292,216 @@ function GuestDetailPage() {
 
         {editing ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Input label="First name" value={form.first_name ?? ""} onChange={(v) => setForm({ ...form, first_name: v })} />
-              <Input label="Middle name" value={form.middle_name ?? ""} onChange={(v) => setForm({ ...form, middle_name: v })} />
-              <Input label="Last name" value={form.last_name ?? ""} onChange={(v) => setForm({ ...form, last_name: v })} />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <EditField
+                label="First name"
+                value={form.first_name ?? ""}
+                onChange={(v) => setForm({ ...form, first_name: v })}
+              />
+              <EditField
+                label="Middle name"
+                value={form.middle_name ?? ""}
+                onChange={(v) => setForm({ ...form, middle_name: v })}
+              />
+              <EditField
+                label="Last name"
+                value={form.last_name ?? ""}
+                onChange={(v) => setForm({ ...form, last_name: v })}
+              />
             </div>
-            <Input label="Origin" value={form.origin ?? ""} onChange={(v) => setForm({ ...form, origin: v })} />
-            <Input label="Phone" value={form.phone ?? ""} onChange={(v) => setForm({ ...form, phone: v })} />
-            <div>
-              <label className="block text-sm font-medium mb-2">Day</label>
-              <select
-                value={form.day ?? ""}
-                onChange={(e) => setForm({ ...form, day: e.target.value ? parseInt(e.target.value) : null })}
-                className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="">Not specified</option>
-                <option value="1">Day 1</option>
-                <option value="2">Day 2</option>
-                <option value="3">Day 3</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Status</label>
-              <div className="grid grid-cols-2 gap-3">
-                {(["camping", "not_camping"] as const).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setForm({ ...form, status: s })}
-                    className={`px-4 py-3 rounded-xl border text-sm font-medium ${
-                      form.status === s
-                        ? "bg-accent text-accent-foreground border-accent"
-                        : "bg-secondary border-border"
-                    }`}
-                  >
-                    {s === "camping" ? "Camping" : "Not camping"}
-                  </button>
-                ))}
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-foreground">Gender</label>
+                <select
+                  value={form.gender ?? "unspecified"}
+                  onChange={(e) => setForm({ ...form, gender: e.target.value as Gender })}
+                  className="w-full rounded-xl border border-border bg-input px-3 py-2.5 text-sm"
+                >
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="unspecified">Not recorded</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-foreground">Age bracket</label>
+                <select
+                  value={form.age_group ?? "adult"}
+                  onChange={(e) => setForm({ ...form, age_group: e.target.value as AgeGroup })}
+                  className="w-full rounded-xl border border-border bg-input px-3 py-2.5 text-sm"
+                >
+                  {Object.entries(AGE_GROUP_LABELS).map(([k, lbl]) => (
+                    <option key={k} value={k}>
+                      {lbl}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-foreground">Ministry role</label>
+                <select
+                  value={form.ministry_role ?? "member"}
+                  onChange={(e) => setForm({ ...form, ministry_role: e.target.value as MinistryRole })}
+                  className="w-full rounded-xl border border-border bg-input px-3 py-2.5 text-sm"
+                >
+                  {Object.entries(MINISTRY_ROLE_LABELS).map(([k, lbl]) => (
+                    <option key={k} value={k}>
+                      {lbl}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 px-4 py-3 rounded-xl">{error}</div>
-            )}
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <EditField
+                label="Home church / Parish"
+                value={form.church_name ?? ""}
+                onChange={(v) => setForm({ ...form, church_name: v })}
+              />
+              <EditField
+                label="Origin / City"
+                value={form.origin ?? ""}
+                onChange={(v) => setForm({ ...form, origin: v })}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <EditField
+                label="Phone number"
+                value={form.phone ?? ""}
+                onChange={(v) => setForm({ ...form, phone: v })}
+              />
+              <EditField
+                label="Guardian / Next-of-kin"
+                value={form.guardian_name ?? ""}
+                onChange={(v) => setForm({ ...form, guardian_name: v })}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-foreground">Accommodation</label>
+                <select
+                  value={form.status ?? "not_camping"}
+                  onChange={(e) =>
+                    setForm({ ...form, status: e.target.value as "camping" | "not_camping" })
+                  }
+                  className="w-full rounded-xl border border-border bg-input px-3 py-2.5 text-sm"
+                >
+                  <option value="not_camping">Day commuter</option>
+                  <option value="camping">Camping on-site</option>
+                </select>
+              </div>
+              <EditField
+                label="Dormitory / Camp zone"
+                value={form.accommodation_zone ?? ""}
+                onChange={(v) => setForm({ ...form, accommodation_zone: v })}
+              />
+            </div>
+
+            <div>
+              <span className="mb-1.5 block text-xs font-semibold text-foreground">Registered days</span>
+              <div className="flex flex-wrap gap-2">
+                {dayOptions.map((d) => {
+                  const active = (form.days_registered ?? []).includes(d);
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => {
+                        const curr = form.days_registered ?? [];
+                        const next = active ? curr.filter((x) => x !== d) : [...curr, d].sort((a, b) => a - b);
+                        if (next.length > 0) setForm({ ...form, days_registered: next });
+                      }}
+                      className={`cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                        active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-secondary text-foreground"
+                      }`}
+                    >
+                      Day {d}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <EditField
+              label="Dietary, medical, or pastoral notes"
+              value={form.dietary_medical ?? ""}
+              onChange={(v) => setForm({ ...form, dietary_medical: v })}
+            />
           </div>
         ) : (
-          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
-            <Detail label="Phone" value={guest.phone} />
-            <Detail label="Origin" value={guest.origin} />
-            <Detail label="Day" value={guest.day ? `Day ${guest.day}` : "Not specified"} />
-            <Detail label="Status" value={guest.status === "camping" ? "Camping" : "Not camping"} />
-            <Detail label="Registered" value={new Date(guest.created_at).toLocaleString()} />
-            <Detail label="Last updated" value={new Date(guest.updated_at).toLocaleString()} />
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-3">
+            <InfoItem label="Badge code" value={guest.reg_code} mono />
+            <InfoItem label="Canonical UUID" value={guest.id} mono />
+            <InfoItem label="Gender" value={GENDER_LABELS[guest.gender] || "Not recorded"} />
+            <InfoItem label="Age bracket" value={AGE_GROUP_LABELS[guest.age_group] || guest.age_group} />
+            <InfoItem label="Ministry role" value={MINISTRY_ROLE_LABELS[guest.ministry_role] || "Member"} />
+            <InfoItem label="Home church / Parish" value={guest.church_name || "Not specified"} />
+            <InfoItem label="City / Region" value={guest.origin || "—"} />
+            <InfoItem
+              label="Phone contact"
+              value={
+                guest.phone
+                  ? `${guest.phone}${guest.is_shared_phone ? " (Shared household)" : ""}`
+                  : "None (uses household/badge)"
+              }
+              mono={Boolean(guest.phone)}
+            />
+            <InfoItem label="Guardian / Emergency" value={guest.guardian_name || "—"} />
+            <InfoItem
+              label="Accommodation"
+              value={
+                guest.status === "camping"
+                  ? `Camping · ${guest.accommodation_zone || "General"}`
+                  : "Day commuter"
+              }
+            />
+            <InfoItem
+              label="Registered days"
+              value={(guest.days_registered?.length ? guest.days_registered : [1])
+                .map((d) => `Day ${d}`)
+                .join(", ")}
+            />
+            <InfoItem label="Welfare & pastoral notes" value={guest.dietary_medical || "None"} />
           </dl>
         )}
       </div>
 
-      <div className="flex justify-end mt-4">
-        <button
-          onClick={remove}
-          className="text-sm text-destructive hover:underline"
-        >
-          Delete guest
-        </button>
-      </div>
+      {/* Linked Household Members */}
+      {householdPeers.length > 0 && (
+        <div className="no-print surface-card p-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Users size={17} className="text-accent" aria-hidden="true" />
+            <h2 className="text-sm font-bold text-foreground">
+              Linked household & family members ({householdPeers.length})
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {householdPeers.map((peer) => (
+              <Link
+                key={peer.id}
+                to="/guests/$id"
+                params={{ id: peer.id }}
+                className="flex items-center justify-between rounded-xl border border-border bg-secondary/50 px-4 py-3 text-xs no-underline hover:bg-secondary"
+              >
+                <div>
+                  <span className="block font-semibold text-foreground">{formatFullName(peer)}</span>
+                  <span className="text-muted-foreground">
+                    {GENDER_LABELS[peer.gender]} · {AGE_GROUP_LABELS[peer.age_group]}
+                  </span>
+                </div>
+                <span className="font-mono-code font-semibold text-accent">{peer.reg_code}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-10">
         <h2 className="text-lg mb-4">Edit history</h2>
