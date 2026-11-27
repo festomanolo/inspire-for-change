@@ -368,6 +368,13 @@ function makeProfileBuilder(params: URLSearchParams) {
 
     async then(resolve: (v: any) => void, reject?: (e: any) => void) {
       try {
+        if (this._updatePayload !== null) {
+          const id = this._params.get("id");
+          const data = await apiPut<Profile>(`/profiles/${id}`, this._updatePayload);
+          emitTableChange("profiles", "UPDATE", data);
+          resolve({ data, error: null });
+          return;
+        }
         const qs = this._params.toString() ? "?" + this._params.toString() : "";
         const data = await apiGet<Profile[]>(`/profiles${qs}`);
         resolve({ data, error: null });
@@ -384,6 +391,12 @@ export const jsonDb = {
   profiles: {
     select(_cols?: string) {
       return makeProfileBuilder(new URLSearchParams());
+    },
+
+    update(updates: Partial<Profile>) {
+      const builder = makeProfileBuilder(new URLSearchParams());
+      builder._updatePayload = updates;
+      return builder;
     },
   },
 
