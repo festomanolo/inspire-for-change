@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  EVENT_STUDIO_BUS,
-  useEvents,
-  type EventStudioDetail,
-} from "@/hooks/use-events";
+import { EVENT_STUDIO_BUS, useEvents, type EventStudioDetail } from "@/hooks/use-events";
 import {
   EVENT_CATEGORY_LABELS,
   EVENT_STATUS_LABELS,
@@ -223,7 +219,9 @@ export function EventStudioModal() {
   const previewBadgeCode = useMemo(() => {
     const rawPrefix =
       form.code.trim() ||
-      (form.name.trim() ? buildSuggestedEventCode(form.name, form.year) : `EVT-${String(form.year).slice(-2)}`);
+      (form.name.trim()
+        ? buildSuggestedEventCode(form.name, form.year)
+        : `EVT-${String(form.year).slice(-2)}`);
     return `${rawPrefix.toUpperCase().replace(/[^A-Z0-9-]/g, "")}-0001`;
   }, [form.code, form.name, form.year]);
 
@@ -236,7 +234,10 @@ export function EventStudioModal() {
 
     setSaving(true);
     try {
-      const cleanCode = form.code.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
+      const cleanCode = form.code
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9-]/g, "");
       if (mode === "edit" && editingEvent) {
         const updated = await updateEvent(editingEvent.id, {
           name: form.name.trim(),
@@ -275,8 +276,8 @@ export function EventStudioModal() {
         );
       }
       setOpen(false);
-    } catch (err: any) {
-      toast.error(err?.message || "Could not save event");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not save event");
     } finally {
       setSaving(false);
     }
@@ -296,15 +297,23 @@ export function EventStudioModal() {
         className="bezel-shell scale-in my-auto w-full max-w-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <form onSubmit={handleSubmit} className="bezel-core max-h-[90dvh] space-y-5 overflow-y-auto p-6 sm:p-7">
+        <form
+          onSubmit={handleSubmit}
+          className="bezel-core max-h-[90dvh] space-y-5 overflow-y-auto p-6 sm:p-7"
+        >
           {/* Header */}
           <div className="flex items-start justify-between gap-3 border-b border-border pb-4">
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold text-accent">
                 <CalendarPlus size={15} weight="fill" aria-hidden="true" />
-                <span>{mode === "edit" ? "Event configuration" : "Multi-program event studio"}</span>
+                <span>
+                  {mode === "edit" ? "Event configuration" : "Multi-program event studio"}
+                </span>
               </div>
-              <h2 id="event-studio-title" className="mt-1 text-lg font-bold text-foreground sm:text-xl">
+              <h2
+                id="event-studio-title"
+                className="mt-1 text-lg font-bold text-foreground sm:text-xl"
+              >
                 {mode === "edit" ? `Edit ${editingEvent?.name}` : "Create new event or gathering"}
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
