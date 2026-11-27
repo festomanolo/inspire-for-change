@@ -8,12 +8,7 @@ import tailwindcss from "@tailwindcss/vite";
 const backendTarget = `http://127.0.0.1:${process.env.BACKEND_PORT || 3001}`;
 
 export default defineConfig({
-  plugins: [
-    tanstackStart(),
-    viteReact(),
-    tailwindcss(),
-    tsconfigPaths(),
-  ],
+  plugins: [tanstackStart(), viteReact(), tailwindcss(), tsconfigPaths()],
   server: {
     port: 8080,
     host: true,
