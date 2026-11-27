@@ -1,12 +1,18 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { useEvents } from "@/hooks/use-events";
+import { openEventStudio, useEvents } from "@/hooks/use-events";
 import { useState, useEffect, useRef } from "react";
 import { exportAllDataToCSV } from "@/lib/csv-export";
-import { EVENT_CATEGORY_LABELS, type EventCategory } from "@/lib/types";
+import {
+  EVENT_STATUS_LABELS,
+  STAFF_ROLE_LABELS,
+  type EventStatus,
+} from "@/lib/types";
+import { EventStudioModal } from "@/components/EventStudioModal";
 import { toast } from "sonner";
 import {
+  Buildings,
   CalendarPlus,
   CaretDown,
   ChartBar,
