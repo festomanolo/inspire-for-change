@@ -350,202 +350,551 @@ function RegisterPage() {
         </Link>
       </div>
 
-      <form onSubmit={(e) => onSubmit(e, false)} className="surface-elevated fade-in" style={{ padding: "clamp(16px, 5vw, 32px)", display: "flex", flexDirection: "column", gap: "18px" }}>
+      {/* Newly Issued Credential Banner */}
+      {createdGuest && (
+        <div className="slide-up space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-success/30 bg-success/10 px-4 py-3 text-xs text-foreground">
+            <div className="flex items-center gap-2 font-semibold text-success">
+              <CheckCircle size={17} weight="fill" aria-hidden="true" />
+              <span>
+                Issued unique UUID & pass {createdGuest.reg_code} for {formatFullName(createdGuest)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/guests/$id"
+                params={{ id: createdGuest.id }}
+                className="font-semibold text-foreground underline"
+              >
+                Open full record
+              </Link>
+              <button
+                type="button"
+                onClick={() => setCreatedGuest(null)}
+                className="cursor-pointer rounded-lg bg-card px-3 py-1 font-semibold text-foreground"
+              >
+                Register next person
+              </button>
+            </div>
+          </div>
+          <QrBadgePass guest={createdGuest} event={selected} />
+        </div>
+      )}
 
-        {/* Search existing */}
-        <div style={{ paddingBottom: "18px", borderBottom: "1px solid var(--color-border)" }}>
-          <Field label="Load returning guest" hint="Search by name or phone to auto-fill their info for a new day">
-            <div style={{ position: "relative" }}>
-              <input
-                id="guest-search-input"
-                value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setTimeout(() => searchGuests(e.target.value), 300); }}
-                onFocus={() => { if (searchResults.length > 0) setShowSearch(true); }}
-                style={{ ...inputStyle, paddingLeft: "38px" }}
-                placeholder="Search existing guests…"
-              />
-              <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--color-muted-foreground)", pointerEvents: "none" }}>🔍</span>
-              {showSearch && searchResults.length > 0 && (
-                <div className="scale-in" style={{
-                  position: "absolute", zIndex: 10, width: "100%", marginTop: "6px",
-                  background: "var(--color-card)", border: "1px solid var(--color-border)",
-                  borderRadius: "14px", overflow: "hidden", boxShadow: "var(--shadow-float)",
-                }}>
-                  {searchResults.map((guest) => (
-                    <button key={guest.id} type="button" onClick={() => loadGuestData(guest)}
-                      style={{
-                        width: "100%", textAlign: "left", padding: "12px 14px", background: "none",
-                        border: "none", cursor: "pointer", borderBottom: "1px solid var(--color-border)",
-                        transition: "background 0.1s ease",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-secondary)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+      {/* Returning Attendee or Household Member Lookup */}
+      <div className="surface-card p-4 sm:p-5">
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+          <div>
+            <label htmlFor="guest-search-input" className="block text-xs font-semibold text-foreground">
+              Find existing attendee or link family household
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Check in a returning attendee for a new day or link a spouse/child sharing a phone number.
+            </p>
+          </div>
+          {form.household_id && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/12 px-3 py-1 font-mono-code text-xs font-semibold text-accent">
+              <Users size={14} aria-hidden="true" />
+              Household linked ({form.household_id.slice(0, 6)})
+            </span>
+          )}
+        </div>
+
+        <div className="relative mt-3">
+          <MagnifyingGlass
+            size={16}
+            className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <input
+            id="guest-search-input"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setShowLookup(true);
+            }}
+            onFocus={() => setShowLookup(true)}
+            placeholder="Search by name, badge code (IFC-26-0001), church, or phone…"
+            className="w-full rounded-xl border border-border bg-input py-2.5 pr-4 pl-10 text-sm text-foreground"
+          />
+
+          {showLookup && lookupResults.length > 0 && (
+            <div className="scale-in surface-elevated absolute z-20 mt-2 w-full divide-y divide-border overflow-hidden">
+              {lookupResults.map((g) => (
+                <div
+                  key={g.id}
+                  className="flex flex-col justify-between gap-2 px-4 py-3 hover:bg-secondary/50 sm:flex-row sm:items-center"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded bg-secondary px-1.5 py-0.5 font-mono-code text-xs font-semibold">
+                        {g.reg_code}
+                      </span>
+                      <span className="text-sm font-semibold text-foreground">{formatFullName(g)}</span>
+                    </div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {g.church_name || g.origin} {g.phone ? `· ${g.phone}` : ""} · Days{" "}
+                      {(g.days_registered || [g.day]).filter(Boolean).join(", ")}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => linkToHousehold(g)}
+                      className="cursor-pointer rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary"
                     >
-                      <div style={{ fontWeight: 600, fontSize: "0.88rem" }}>
-                        {[guest.first_name, guest.middle_name, guest.last_name].filter(Boolean).join(" ")}
-                      </div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--color-muted-foreground)", display: "flex", gap: "8px", marginTop: "2px" }}>
-                        <span>{guest.phone}</span><span>·</span><span>{guest.origin}</span>
-                        {guest.day && <><span>·</span><span>Day {guest.day}</span></>}
-                      </div>
+                      Link family member
+                    </button>
+                    <Link
+                      to="/guests/$id"
+                      params={{ id: g.id }}
+                      className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground no-underline"
+                    >
+                      Open profile
+                      <ArrowRight size={12} aria-hidden="true" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Main Registration Form */}
+      <div className="bezel-shell">
+        <form
+          onSubmit={(e) => handleSubmit(e, "pass")}
+          className="bezel-core space-y-7 p-5 sm:p-8"
+        >
+          {/* Section 1: Personal Identity & Demographics */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-2.5">
+              <h2 className="text-base font-bold text-foreground">1. Personal identity & demographics</h2>
+              <span className="inline-flex items-center gap-1 font-mono-code text-xs text-muted-foreground">
+                <IdentificationBadge size={14} className="text-accent" aria-hidden="true" />
+                UUID v4 auto-assigned
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div>
+                <label htmlFor="reg-first-name" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  First name <span className="text-accent">*</span>
+                </label>
+                <input
+                  id="reg-first-name"
+                  required
+                  value={form.first_name}
+                  onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                  placeholder="e.g. Neema"
+                  className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="reg-middle-name" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Middle name
+                </label>
+                <input
+                  id="reg-middle-name"
+                  value={form.middle_name}
+                  onChange={(e) => setForm({ ...form, middle_name: e.target.value })}
+                  placeholder="Optional"
+                  className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="reg-last-name" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Last name / Surname <span className="text-accent">*</span>
+                </label>
+                <input
+                  id="reg-last-name"
+                  required
+                  value={form.last_name}
+                  onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                  placeholder="e.g. Mwakasege"
+                  className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground"
+                />
+              </div>
+            </div>
+
+            {/* Exact Same Person Alert */}
+            {exactPersonMatch && (
+              <div className="scale-in flex flex-col justify-between gap-3 rounded-xl border border-warm/40 bg-warm/10 p-3.5 text-xs sm:flex-row sm:items-center">
+                <div className="flex items-start gap-2.5">
+                  <WarningCircle size={18} className="mt-0.5 shrink-0 text-warm" aria-hidden="true" />
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      {formatFullName(exactPersonMatch)} ({exactPersonMatch.reg_code}) is already registered
+                    </p>
+                    <p className="text-muted-foreground">
+                      Instead of creating a duplicate row, check them in for another day on their single UUID profile.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  {dayOptions.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => addDayToExistingGuest(exactPersonMatch, d)}
+                      className="cursor-pointer rounded-lg bg-primary px-2.5 py-1.5 font-semibold text-primary-foreground"
+                    >
+                      + Check in Day {d}
                     </button>
                   ))}
                 </div>
-              )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {/* Gender */}
+              <div>
+                <span className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Gender <span className="text-accent">*</span>
+                </span>
+                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Gender">
+                  {(["male", "female"] as const).map((g) => {
+                    const active = form.gender === g;
+                    return (
+                      <button
+                        key={g}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => setForm({ ...form, gender: g })}
+                        className={`cursor-pointer rounded-xl border px-3 py-2.5 text-sm font-semibold capitalize ${
+                          active
+                            ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                            : "border-border bg-secondary/70 text-foreground hover:bg-secondary"
+                        }`}
+                      >
+                        {g}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Age Bracket */}
+              <div>
+                <label htmlFor="reg-age-group" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Age bracket
+                </label>
+                <select
+                  id="reg-age-group"
+                  value={form.age_group}
+                  onChange={(e) => setForm({ ...form, age_group: e.target.value as AgeGroup })}
+                  className="w-full rounded-xl border border-border bg-input px-3 py-2.5 text-sm text-foreground"
+                >
+                  {Object.entries(AGE_GROUP_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Ministry Role */}
+              <div>
+                <label htmlFor="reg-role" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Church / Ministry role
+                </label>
+                <select
+                  id="reg-role"
+                  value={form.ministry_role}
+                  onChange={(e) => setForm({ ...form, ministry_role: e.target.value as MinistryRole })}
+                  className="w-full rounded-xl border border-border bg-input px-3 py-2.5 text-sm text-foreground"
+                >
+                  {Object.entries(MINISTRY_ROLE_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </Field>
-        </div>
+          </section>
 
-        {/* Name fields */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "12px" }}>
-          <Field label="First name" required>
-            <input id="reg-first-name" autoFocus value={form.first_name}
-              onChange={(e) => { update("first_name", e.target.value); setTimeout(() => checkDuplicate(form.phone, e.target.value, form.last_name), 500); }}
-              style={inputStyle} placeholder="Jane" />
-          </Field>
-          <Field label="Middle name">
-            <input id="reg-middle-name" value={form.middle_name}
-              onChange={(e) => update("middle_name", e.target.value)} style={inputStyle} placeholder="Optional" />
-          </Field>
-          <Field label="Last name" required>
-            <input id="reg-last-name" value={form.last_name}
-              onChange={(e) => { update("last_name", e.target.value); setTimeout(() => checkDuplicate(form.phone, form.first_name, e.target.value), 500); }}
-              style={inputStyle} placeholder="Doe" />
-          </Field>
-        </div>
+          {/* Section 2: Parish, Origin & Household-Safe Contact */}
+          <section className="space-y-4">
+            <div className="border-b border-border pb-2.5">
+              <h2 className="text-base font-bold text-foreground">2. Church fellowship & contact</h2>
+            </div>
 
-        <Field label="Location / origin" required>
-          <input id="reg-origin" value={form.origin}
-            onChange={(e) => update("origin", e.target.value)} style={inputStyle} placeholder="City, country" />
-        </Field>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="reg-church" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Home church / Parish / Branch
+                </label>
+                <div className="relative">
+                  <Church
+                    size={16}
+                    className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <input
+                    id="reg-church"
+                    value={form.church_name}
+                    onChange={(e) => setForm({ ...form, church_name: e.target.value })}
+                    placeholder="e.g. Grace Sanctuary — Mikocheni"
+                    className="w-full rounded-xl border border-border bg-input py-2.5 pr-3.5 pl-10 text-sm text-foreground"
+                  />
+                </div>
+              </div>
 
-        <Field label="Phone number" required>
-          <input id="reg-phone" value={form.phone} type="tel"
-            onChange={(e) => { update("phone", e.target.value); const t = setTimeout(() => checkDuplicate(e.target.value, form.first_name, form.last_name), 500); return () => clearTimeout(t); }}
-            style={inputStyle} placeholder="+1 555 000 0000" />
-        </Field>
+              <div>
+                <label htmlFor="reg-origin" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  City / Region / Country <span className="text-accent">*</span>
+                </label>
+                <input
+                  id="reg-origin"
+                  required
+                  value={form.origin}
+                  onChange={(e) => setForm({ ...form, origin: e.target.value })}
+                  placeholder="e.g. Dar es Salaam, Tanzania"
+                  className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground"
+                />
+              </div>
+            </div>
 
-        {/* Status */}
-        <div>
-          <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "8px" }}>Accommodation status</label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-            {(["camping", "not_camping"] as const).map((s) => (
-              <button key={s} type="button" id={`status-${s}`}
-                onClick={() => update("status", s)}
-                style={{
-                  padding: "12px 14px", borderRadius: "12px", border: "2px solid",
-                  borderColor: form.status === s ? "var(--color-accent)" : "var(--color-border)",
-                  background: form.status === s ? "oklch(0.55 0.22 258 / 0.06)" : "var(--color-secondary)",
-                  color: form.status === s ? "var(--color-accent)" : "var(--color-foreground)",
-                  fontWeight: form.status === s ? 700 : 500, fontSize: "0.88rem",
-                  cursor: "pointer", transition: "all 0.15s ease", textAlign: "center",
-                }}>
-                {s === "camping" ? "⛺ Camping" : "☀️ Not camping"}
-              </button>
-            ))}
-          </div>
-        </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="reg-phone" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Phone number <span className="font-normal text-muted-foreground">(optional · family sharing supported)</span>
+                </label>
+                <input
+                  id="reg-phone"
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="+255 784 000 000 (leave blank if none)"
+                  className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 font-mono-code text-sm text-foreground"
+                />
+              </div>
 
-        {/* Day selector */}
-        <div>
-          <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "8px" }}>
-            Day of attendance <span style={{ fontWeight: 400, color: "var(--color-muted-foreground)" }}>(optional)</span>
-          </label>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
-            {[1, 2, 3].map((dayNum) => (
+              <div>
+                <label htmlFor="reg-guardian" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  {form.age_group === "child" ? "Parent / Guardian full name" : "Emergency / Household contact"}
+                </label>
+                <input
+                  id="reg-guardian"
+                  value={form.guardian_name}
+                  onChange={(e) => setForm({ ...form, guardian_name: e.target.value })}
+                  placeholder={form.age_group === "child" ? "Required for children's ministry safety" : "Optional next-of-kin"}
+                  required={form.age_group === "child"}
+                  className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground"
+                />
+              </div>
+            </div>
+
+            {/* Non-blocking Shared Family Phone Intelligence */}
+            {phoneMatches.length > 0 && !exactPersonMatch && (
+              <div className="scale-in flex flex-col justify-between gap-3 rounded-xl border border-accent/30 bg-accent/8 p-3.5 text-xs sm:flex-row sm:items-center">
+                <div className="space-y-0.5">
+                  <p className="font-semibold text-foreground">
+                    Shared phone number with {formatFullName(phoneMatches[0])} ({phoneMatches[0].reg_code})
+                  </p>
+                  <p className="text-muted-foreground">
+                    Phone numbers are not used as unique IDs — you can freely register spouses, children, or group members on the same number.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => linkToHousehold(phoneMatches[0])}
+                  className="shrink-0 cursor-pointer rounded-lg border border-accent/40 bg-card px-3 py-1.5 font-semibold text-foreground hover:bg-secondary"
+                >
+                  Copy church & link household
+                </button>
+              </div>
+            )}
+          </section>
+
+          {/* Section 3: Attendance Days, Gate Check-in & Dormitory Accommodation */}
+          <section className="space-y-4">
+            <div className="border-b border-border pb-2.5">
+              <h2 className="text-base font-bold text-foreground">3. Attendance schedule & accommodation</h2>
+            </div>
+
+            {/* Multi-day selector */}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground">
+                  Days attending <span className="text-accent">*</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={selectAllDays}
+                  className="cursor-pointer text-xs font-semibold text-accent hover:underline"
+                >
+                  Select all {totalDays} days
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {dayOptions.map((d) => {
+                  const selectedDay = form.days_registered.includes(d);
+                  return (
+                    <button
+                      key={d}
+                      id={`day-btn-${d}`}
+                      type="button"
+                      onClick={() => toggleDay(d)}
+                      className={`cursor-pointer rounded-xl border px-4 py-2.5 text-xs font-semibold ${
+                        selectedDay
+                          ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                          : "border-border bg-secondary/60 text-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      Day {d}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Instant Gate Check-in Selector */}
+            <div className="rounded-xl border border-border bg-secondary/50 p-3.5">
+              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                <div>
+                  <span className="block text-xs font-semibold text-foreground">
+                    Immediate gate check-in
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Mark this attendee as physically arrived right now, or choose Pre-registration only.
+                  </span>
+                </div>
+                <select
+                  aria-label="Immediate check-in day"
+                  value={checkInNowDay ?? ""}
+                  onChange={(e) => setCheckInNowDay(e.target.value ? Number(e.target.value) : null)}
+                  className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground"
+                >
+                  <option value="">Pre-register only (not arrived yet)</option>
+                  {form.days_registered.map((d) => (
+                    <option key={d} value={d}>
+                      Check in now for Day {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Accommodation Status + Dorm Zone */}
+            {selected.camping_enabled !== false && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <span className="mb-1.5 block text-xs font-semibold text-foreground">
+                    Accommodation mode
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["not_camping", "camping"] as const).map((s) => {
+                      const active = form.status === s;
+                      return (
+                        <button
+                          key={s}
+                          id={`status-${s}`}
+                          type="button"
+                          onClick={() => setForm({ ...form, status: s })}
+                          className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold ${
+                            active
+                              ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                              : "border-border bg-secondary/60 text-foreground hover:bg-secondary"
+                          }`}
+                        >
+                          {s === "camping" ? (
+                            <>
+                              <Campfire size={15} weight={active ? "fill" : "regular"} aria-hidden="true" />
+                              Camping on-site
+                            </>
+                          ) : (
+                            <>
+                              <SunHorizon size={15} weight={active ? "fill" : "regular"} aria-hidden="true" />
+                              Day commuter
+                            </>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="reg-zone" className="mb-1.5 block text-xs font-semibold text-foreground">
+                    Dormitory / Camp allocation
+                  </label>
+                  <input
+                    id="reg-zone"
+                    disabled={form.status !== "camping"}
+                    value={form.status === "camping" ? form.accommodation_zone : "Off-site (Day attendee)"}
+                    onChange={(e) => {
+                      setZoneManuallyEdited(true);
+                      setForm({ ...form, accommodation_zone: e.target.value });
+                    }}
+                    placeholder="Auto-assigned by gender & age"
+                    className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground disabled:opacity-60"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="reg-notes" className="mb-1.5 block text-xs font-semibold text-foreground">
+                Dietary, medical, accessibility, or pastoral notes
+              </label>
+              <input
+                id="reg-notes"
+                value={form.dietary_medical}
+                onChange={(e) => setForm({ ...form, dietary_medical: e.target.value })}
+                placeholder="Optional welfare or special care instructions"
+                className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground"
+              />
+            </div>
+          </section>
+
+          {error && (
+            <div role="alert" className="scale-in rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs font-medium text-destructive">
+              {error}
+            </div>
+          )}
+
+          {/* Action Bar */}
+          <div className="flex flex-col gap-2.5 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-2">
               <button
-                key={dayNum}
-                id={`day-btn-${dayNum}`}
+                id="reg-save-another-btn"
                 type="button"
-                onClick={() => setForm({ ...form, day: form.day === dayNum ? null : dayNum })}
-                style={{
-                  padding: "12px 8px", borderRadius: "12px", border: "2px solid",
-                  borderColor: form.day === dayNum ? "var(--color-accent)" : "var(--color-border)",
-                  background: form.day === dayNum ? "oklch(0.55 0.22 258 / 0.06)" : "var(--color-secondary)",
-                  color: form.day === dayNum ? "var(--color-accent)" : "var(--color-foreground)",
-                  fontWeight: form.day === dayNum ? 700 : 500, fontSize: "0.9rem",
-                  cursor: "pointer", transition: "all 0.15s ease",
-                }}
+                disabled={saving}
+                onClick={(e) => handleSubmit(e, "fresh")}
+                className="cursor-pointer rounded-full border border-border bg-secondary px-4 py-2.5 text-xs font-semibold text-secondary-foreground hover:bg-muted disabled:opacity-50"
               >
-                Day {dayNum}
+                Save & clear for next
               </button>
-            ))}
+              <button
+                type="button"
+                disabled={saving}
+                onClick={(e) => handleSubmit(e, "household")}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2.5 text-xs font-semibold text-foreground hover:bg-secondary disabled:opacity-50"
+              >
+                <Users size={15} className="text-accent" aria-hidden="true" />
+                Save & add family member
+              </button>
+            </div>
+
+            <button
+              id="reg-save-view-btn"
+              type="submit"
+              disabled={saving}
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-95 disabled:opacity-50"
+            >
+              <UserPlus size={17} weight="bold" aria-hidden="true" />
+              {saving ? "Registering…" : "Register & issue badge pass"}
+            </button>
           </div>
-          <p style={{ fontSize: "0.72rem", color: "var(--color-muted-foreground)", marginTop: "6px" }}>
-            Select which day this guest attends
-          </p>
-        </div>
-
-        {/* Duplicate warning */}
-        {duplicateWarning && (
-          <div className="scale-in" style={{
-            fontSize: "0.82rem", padding: "10px 14px", borderRadius: "10px",
-            ...(duplicateWarning.startsWith("ℹ️")
-              ? { color: "oklch(0.5 0.2 258)", background: "oklch(0.55 0.22 258 / 0.06)", border: "1px solid oklch(0.55 0.22 258 / 0.2)" }
-              : { color: "oklch(0.55 0.2 50)", background: "oklch(0.65 0.18 50 / 0.06)", border: "1px solid oklch(0.65 0.18 50 / 0.2)" }),
-          }}>
-            {duplicateWarning}
-          </div>
-        )}
-
-        {/* Error */}
-        {error && (
-          <div className="scale-in" style={{
-            fontSize: "0.85rem", color: "var(--color-destructive)",
-            background: "oklch(0.58 0.22 27 / 0.08)", padding: "10px 14px",
-            borderRadius: "10px", border: "1px solid oklch(0.58 0.22 27 / 0.2)",
-          }}>
-            {error}
-          </div>
-        )}
-
-        {/* Submit buttons */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px", paddingTop: "4px" }}>
-          <button
-            id="reg-save-view-btn"
-            type="submit"
-            disabled={saving}
-            style={{
-              padding: "13px 20px", borderRadius: "12px", border: "none",
-              background: saving ? "var(--color-muted)" : "linear-gradient(135deg, oklch(0.28 0.06 255), oklch(0.45 0.2 268))",
-              color: saving ? "var(--color-muted-foreground)" : "white",
-              fontWeight: 700, fontSize: "0.95rem", cursor: saving ? "not-allowed" : "pointer",
-              boxShadow: saving ? "none" : "0 4px 14px oklch(0.45 0.2 268 / 0.3)",
-              transition: "all 0.2s ease",
-            }}
-          >
-            {saving ? "Saving…" : "Save & view profile →"}
-          </button>
-          <button
-            id="reg-save-another-btn"
-            type="button"
-            onClick={(e) => onSubmit(e, true)}
-            disabled={saving}
-            style={{
-              padding: "13px 20px", borderRadius: "12px",
-              border: "1.5px solid var(--color-border)",
-              background: "var(--color-secondary)", color: "var(--color-foreground)",
-              fontWeight: 600, fontSize: "0.88rem", cursor: saving ? "not-allowed" : "pointer",
-              transition: "all 0.2s ease",
-            }}
-          >
-            Save & add another
-          </button>
-        </div>
-      </form>
-
-      {/* Success toast */}
-      {savedToast && (
-        <div className="scale-in" style={{
-          position: "fixed", bottom: "90px", left: "50%", transform: "translateX(-50%)",
-          background: "var(--color-primary)", color: "var(--color-primary-foreground)",
-          padding: "10px 20px", borderRadius: "9999px", fontSize: "0.88rem",
-          fontWeight: 600, boxShadow: "var(--shadow-float)", zIndex: 100,
-          whiteSpace: "nowrap",
-        }}>
-          {savedToast}
-        </div>
-      )}
+        </form>
+      </div>
     </div>
   );
 }
