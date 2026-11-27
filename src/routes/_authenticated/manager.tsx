@@ -419,7 +419,8 @@ function ManagerDashboardPage() {
   const handleRoleUpdate = async (staff: Profile, nextRole: StaffRole) => {
     setUpdatingRoleId(staff.id);
     try {
-      const { error } = await (supabase.from("profiles") as any)
+      const { error } = await supabase
+        .from("profiles")
         .update({ role: nextRole })
         .eq("id", staff.id)
         .select()
@@ -427,8 +428,8 @@ function ManagerDashboardPage() {
       if (error) throw new Error(error.message);
       await loadPortfolioData();
       toast.success(`Updated ${staff.display_name} to ${STAFF_ROLE_LABELS[nextRole]}`);
-    } catch (err: any) {
-      toast.error(err?.message || "Could not update staff role");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not update staff role");
     } finally {
       setUpdatingRoleId(null);
     }
@@ -445,8 +446,8 @@ function ManagerDashboardPage() {
         toast.info(`All ${selected.name} attendee UUIDs are already unique`);
       }
       await loadPortfolioData();
-    } catch (err: any) {
-      toast.error(err?.message || "Consolidation failed");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Consolidation failed");
     } finally {
       setMerging(false);
     }
@@ -474,7 +475,8 @@ function ManagerDashboardPage() {
               </div>
               <h1 className="text-foreground">Manager dashboard</h1>
               <p className="max-w-[64ch] text-sm text-muted-foreground">
-                Create, launch, and oversee conferences, camps, seminars, crusades, and partner organization events from one unified operations hub.
+                Create, launch, and oversee conferences, camps, seminars, crusades, and partner
+                organization events from one unified operations hub.
               </p>
             </div>
 
@@ -512,7 +514,8 @@ function ManagerDashboardPage() {
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {portfolioSummary.activeCount} active · {portfolioSummary.upcomingCount} upcoming ·{" "}
-                {portfolioSummary.uniqueOrganizers} host{portfolioSummary.uniqueOrganizers === 1 ? "" : "s"}
+                {portfolioSummary.uniqueOrganizers} host
+                {portfolioSummary.uniqueOrganizers === 1 ? "" : "s"}
               </p>
             </div>
 
@@ -571,7 +574,8 @@ function ManagerDashboardPage() {
             <div className="flex items-center gap-2 text-xs">
               <Buildings size={16} className="shrink-0 text-accent" aria-hidden="true" />
               <span className="font-medium text-foreground">
-                Launch a standalone event for any host ministry, department, seminar, or community brand:
+                Launch a standalone event for any host ministry, department, seminar, or community
+                brand:
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -651,8 +655,15 @@ function ManagerDashboardPage() {
 
                   <div className="h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={crossEventChartData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                      <BarChart
+                        data={crossEventChartData}
+                        margin={{ top: 8, right: 8, left: -18, bottom: 0 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="var(--color-border)"
+                          vertical={false}
+                        />
                         <XAxis
                           dataKey="code"
                           tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
