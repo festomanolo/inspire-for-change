@@ -5,6 +5,7 @@ import {
   MINISTRY_ROLE_LABELS,
   type EventRow,
   type Guest,
+  type GuestEdit,
   type Profile,
 } from "./types";
 
@@ -52,11 +53,12 @@ export async function exportGuestsToCSV(eventId?: string): Promise<void> {
     const creator = profiles.find((p) => p.id === guest.created_by);
     const updater = profiles.find((p) => p.id === guest.updated_by);
     const event = events.find((e) => e.id === guest.event_id);
-    const daysReg = Array.isArray(guest.days_registered) && guest.days_registered.length > 0
-      ? guest.days_registered.map((d) => `Day ${d}`).join("; ")
-      : guest.day
-        ? `Day ${guest.day}`
-        : "";
+    const daysReg =
+      Array.isArray(guest.days_registered) && guest.days_registered.length > 0
+        ? guest.days_registered.map((d) => `Day ${d}`).join("; ")
+        : guest.day
+          ? `Day ${guest.day}`
+          : "";
     const checkedInDays = Object.keys(guest.check_ins ?? {})
       .sort()
       .map((d) => `Day ${d}`)
@@ -166,8 +168,16 @@ export async function exportAllDataToCSV(): Promise<void> {
 
   if (Array.isArray(data.guest_edits) && data.guest_edits.length > 0) {
     await new Promise((resolve) => setTimeout(resolve, 120));
-    const editHeaders = ["id", "guest_id", "event_id", "edited_by", "edited_at", "action", "changes"];
-    const editsData = data.guest_edits.map((edit: any) => ({
+    const editHeaders = [
+      "id",
+      "guest_id",
+      "event_id",
+      "edited_by",
+      "edited_at",
+      "action",
+      "changes",
+    ];
+    const editsData = data.guest_edits.map((edit: GuestEdit) => ({
       ...edit,
       changes: JSON.stringify(edit.changes),
     }));
