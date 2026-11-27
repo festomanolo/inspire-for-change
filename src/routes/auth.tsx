@@ -185,167 +185,108 @@ function AuthPage() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {m === "signup" ? "Create account" : "Sign in"}
+                {m === "signin" ? "Registrar sign in" : "New staff account"}
               </button>
             ))}
           </div>
 
-          <div style={{ marginBottom: "20px" }}>
-            <h2 style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.03em", marginBottom: "4px" }}>
-              {mode === "signup" ? "Join the team" : "Welcome back"}
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">
+              {mode === "signin" ? "Welcome back to the desk" : "Create your registrar profile"}
             </h2>
-            <p style={{ fontSize: "0.875rem", color: "var(--color-muted-foreground)" }}>
-              {mode === "signup"
-                ? "Create your staff account to start registering guests."
-                : "Sign in to your staff account to continue."}
+            <p className="mt-1 text-xs text-muted-foreground">
+              {mode === "signin"
+                ? "Sign in to issue attendee passes, manage dormitories, and verify arrivals."
+                : "Onboard as a church registrar, usher, or camp coordinator."}
             </p>
           </div>
 
-          <form onSubmit={onSubmit} className="surface-elevated p-6 sm:p-8 space-y-4">
-            {mode === "signup" && (
-              <div className="fade-in">
-                <label htmlFor="auth-display-name" style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "6px", color: "var(--color-foreground)" }}>
-                  Full name
+          <div className="bezel-shell">
+            <form onSubmit={onSubmit} className="bezel-core space-y-4 p-6 sm:p-7">
+              {mode === "signup" && (
+                <div>
+                  <label htmlFor="auth-display-name" className="mb-1.5 block text-xs font-semibold text-foreground">
+                    Full name
+                  </label>
+                  <input
+                    id="auth-display-name"
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="e.g. Pastor Daniel Mwakasege"
+                    required
+                    autoComplete="name"
+                    className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="auth-email" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Email address
                 </label>
                 <input
-                  id="auth-display-name"
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  style={{
-                    width: "100%", padding: "11px 14px", borderRadius: "12px",
-                    background: "var(--color-input)", border: "1.5px solid var(--color-border)",
-                    fontSize: "0.9rem", color: "var(--color-foreground)",
-                    transition: "border-color 0.15s ease, box-shadow 0.15s ease",
-                  }}
-                  placeholder="Jane Doe"
+                  id="auth-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="registrar@church.org"
                   required
-                  autoComplete="name"
+                  autoComplete="email"
+                  className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground"
                 />
               </div>
-            )}
 
-            <div>
-              <label htmlFor="auth-email" style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "6px" }}>
-                Email address
-              </label>
-              <input
-                id="auth-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{
-                  width: "100%", padding: "11px 14px", borderRadius: "12px",
-                  background: "var(--color-input)", border: "1.5px solid var(--color-border)",
-                  fontSize: "0.9rem", color: "var(--color-foreground)",
-                  transition: "border-color 0.15s ease, box-shadow 0.15s ease",
-                }}
-                placeholder="you@example.com"
-                required
-                autoComplete="email"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="auth-password" style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "6px" }}>
-                Password
-              </label>
-              <div style={{ position: "relative" }}>
-                <input
-                  id="auth-password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={{
-                    width: "100%", padding: "11px 44px 11px 14px", borderRadius: "12px",
-                    background: "var(--color-input)", border: "1.5px solid var(--color-border)",
-                    fontSize: "0.9rem", color: "var(--color-foreground)",
-                    transition: "border-color 0.15s ease, box-shadow 0.15s ease",
-                  }}
-                  placeholder="••••••••"
-                  required
-                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                />
-                <button
-                  type="button"
-                  id="auth-toggle-password"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)",
-                    background: "none", border: "none", cursor: "pointer", padding: "4px",
-                    color: "var(--color-muted-foreground)", display: "flex", alignItems: "center",
-                  }}
-                >
-                  <EyeIcon open={showPassword} />
-                </button>
+              <div>
+                <label htmlFor="auth-password" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="auth-password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    required
+                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                    className="w-full rounded-xl border border-border bg-input py-2.5 pr-11 pl-3.5 text-sm text-foreground"
+                  />
+                  <button
+                    type="button"
+                    id="auth-toggle-password"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <Eye size={17} /> : <EyeSlash size={17} />}
+                  </button>
+                </div>
               </div>
-              {mode === "signup" && (
-                <p style={{ fontSize: "0.75rem", color: "var(--color-muted-foreground)", marginTop: "5px" }}>
-                  At least 6 characters
-                </p>
+
+              {error && (
+                <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs font-medium text-destructive">
+                  {error}
+                </div>
               )}
-            </div>
 
-            {error && (
-              <div className="scale-in" style={{
-                fontSize: "0.85rem", color: "var(--color-destructive)",
-                background: "oklch(0.58 0.22 27 / 0.08)", padding: "10px 14px",
-                borderRadius: "10px", border: "1px solid oklch(0.58 0.22 27 / 0.2)",
-              }}>
-                {error}
-              </div>
-            )}
+              {success && (
+                <div className="rounded-xl border border-success/30 bg-success/10 px-3.5 py-2.5 text-xs font-medium text-success">
+                  {success}
+                </div>
+              )}
 
-            {success && (
-              <div className="scale-in" style={{
-                fontSize: "0.85rem", color: "var(--color-success)",
-                background: "oklch(0.62 0.18 150 / 0.08)", padding: "10px 14px",
-                borderRadius: "10px", border: "1px solid oklch(0.62 0.18 150 / 0.2)",
-              }}>
-                {success}
-              </div>
-            )}
-
-            <button
-              id="auth-submit-btn"
-              type="submit"
-              disabled={loading}
-              style={{
-                width: "100%", padding: "13px 20px", borderRadius: "12px", border: "none",
-                background: loading ? "var(--color-muted)" : "linear-gradient(135deg, oklch(0.28 0.06 255), oklch(0.45 0.2 268))",
-                color: loading ? "var(--color-muted-foreground)" : "white",
-                fontWeight: 600, fontSize: "0.9rem", cursor: loading ? "not-allowed" : "pointer",
-                boxShadow: loading ? "none" : "0 4px 14px oklch(0.45 0.2 268 / 0.3)",
-                transition: "all 0.2s ease",
-              }}
-            >
-              {loading ? "Please wait…" : mode === "signin" ? "Sign in →" : "Create account →"}
-            </button>
-          </form>
-
-          <p style={{ textAlign: "center", marginTop: "20px", fontSize: "0.8rem", color: "var(--color-muted-foreground)" }}>
-            {mode === "signup" ? (
-              <>Already have an account?{" "}
-                <button id="auth-switch-to-signin" onClick={() => { setMode("signin"); setError(""); setSuccess(""); }}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 600,
-                    color: "var(--color-accent)", textDecoration: "underline", fontSize: "inherit" }}>
-                  Sign in
-                </button>
-              </>
-            ) : (
-              <>New staff member?{" "}
-                <button id="auth-switch-to-signup" onClick={() => { setMode("signup"); setError(""); setSuccess(""); }}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 600,
-                    color: "var(--color-accent)", textDecoration: "underline", fontSize: "inherit" }}>
-                  Create an account
-                </button>
-              </>
-            )}
-          </p>
-
-          <p style={{ textAlign: "center", marginTop: "24px", fontSize: "0.72rem", color: "var(--color-muted-foreground)" }}>
-            Staff only · Contact your admin if you need access
-          </p>
+              <button
+                id="auth-submit-btn"
+                type="submit"
+                disabled={loading}
+                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:opacity-95 disabled:opacity-50"
+              >
+                <span>{loading ? "Authenticating…" : mode === "signin" ? "Sign in to workspace" : "Create staff account"}</span>
+                <ArrowRight size={16} weight="bold" aria-hidden="true" />
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
