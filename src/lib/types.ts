@@ -23,13 +23,15 @@ export type EventCategory =
   | "community_gala"
   | "worship_service";
 
-export type EventStatus = "upcoming" | "active" | "archived";
+export type EventStatus = "upcoming" | "active" | "completed" | "archived";
+
+export type StaffRole = "manager" | "admin" | "registrar" | "usher";
 
 export type Profile = {
   id: string;
   email: string;
   display_name: string;
-  role?: "admin" | "registrar" | "usher";
+  role?: StaffRole;
   created_at?: string;
 };
 
