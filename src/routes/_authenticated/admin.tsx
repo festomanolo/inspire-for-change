@@ -1,17 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useEvents } from "@/hooks/use-events";
+import { openEventStudio, useEvents } from "@/hooks/use-events";
 import { useAuth } from "@/hooks/use-auth";
 import { consolidateEventDuplicates } from "@/lib/json-storage";
 import {
   AGE_GROUP_LABELS,
   EVENT_CATEGORY_LABELS,
-  GENDER_LABELS,
+  EVENT_STATUS_LABELS,
   MINISTRY_ROLE_LABELS,
   formatFullName,
   type AgeGroup,
   type EventCategory,
+  type EventStatus,
   type Guest,
   type GuestEdit,
   type Profile,
