@@ -133,7 +133,9 @@ export function useEvents() {
       const created = data as unknown as EventRow;
       select(created.id);
       if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent(EVENT_BUS, { detail: { id: created.id, reload: true } }));
+        window.dispatchEvent(
+          new CustomEvent(EVENT_BUS, { detail: { id: created.id, reload: true } }),
+        );
       }
       return created;
     }
