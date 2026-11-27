@@ -317,7 +317,8 @@ export function EventStudioModal() {
                 {mode === "edit" ? `Edit ${editingEvent?.name}` : "Create new event or gathering"}
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Host any conference, camp, seminar, outreach, or partner ministry event — not limited to Inspired for Change.
+                Host any conference, camp, seminar, outreach, or partner ministry event — not
+                limited to Inspired for Change.
               </p>
             </div>
             <button
@@ -362,7 +363,10 @@ export function EventStudioModal() {
           {/* Row 1: Event Title & Host Organization */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="ev-studio-name" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-name"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Event title <span className="text-accent">*</span>
               </label>
               <input
@@ -377,7 +381,10 @@ export function EventStudioModal() {
             </div>
 
             <div>
-              <label htmlFor="ev-studio-org" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-org"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Host organization / Ministry / Brand
               </label>
               <div className="relative">
@@ -406,7 +413,10 @@ export function EventStudioModal() {
           {/* Row 2: Badge Prefix, Category, Lifecycle Status */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <label htmlFor="ev-studio-code" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-code"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Badge code prefix
               </label>
               <input
@@ -427,7 +437,10 @@ export function EventStudioModal() {
             </div>
 
             <div>
-              <label htmlFor="ev-studio-cat" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-cat"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Event category
               </label>
               <select
@@ -445,7 +458,10 @@ export function EventStudioModal() {
             </div>
 
             <div>
-              <label htmlFor="ev-studio-status" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-status"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Lifecycle status
               </label>
               <select
@@ -466,7 +482,10 @@ export function EventStudioModal() {
           {/* Row 3: Dates, Year, Duration & Target Capacity */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
-              <label htmlFor="ev-studio-start" className="mb-1.5 block text-xs font-semibold text-foreground">
+              <label
+                htmlFor="ev-studio-start"
+                className="mb-1.5 block text-xs font-semibold text-foreground"
+              >
                 Start date
               </label>
               <input
