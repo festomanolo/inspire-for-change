@@ -1,30 +1,27 @@
-// JSON file-based storage for testing (replaces Supabase)
+// JSON file-based storage client (mirrors Supabase fluent API + church event extensions)
 import type { Profile, Guest, EventRow, GuestEdit } from "./types";
 
 const API_BASE = "/api/storage";
 
-// Mock user type
 export type JsonUser = {
   id: string;
   email: string;
   created_at: string;
 };
 
-// Mock session type
 export type JsonSession = {
   user: JsonUser;
   access_token: string;
   expires_at: number;
 };
 
-// Helper functions to interact with the API
 async function apiGet<T>(endpoint: string): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`);
   if (!response.ok) throw new Error(`Failed to fetch ${endpoint}`);
   return response.json();
 }
 
-async function apiPost<T>(endpoint: string, data: any): Promise<T> {
+async function apiPost<T>(endpoint: string, data: unknown): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -37,22 +34,27 @@ async function apiPost<T>(endpoint: string, data: any): Promise<T> {
   return response.json();
 }
 
-async function apiPut<T>(endpoint: string, data: any): Promise<T> {
+async function apiPut<T>(endpoint: string, data: unknown): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error(`Failed to update ${endpoint}`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: `Failed to update ${endpoint}` }));
+    throw new Error(error.message || `Failed to update ${endpoint}`);
+  }
   return response.json();
 }
 
 async function apiDelete(endpoint: string): Promise<void> {
   const response = await fetch(`${API_BASE}${endpoint}`, { method: "DELETE" });
-  if (!response.ok) throw new Error(`Failed to delete ${endpoint}`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: `Failed to delete ${endpoint}` }));
+    throw new Error(error.message || `Failed to delete ${endpoint}`);
+  }
 }
 
-// Auth state listeners
 type AuthListener = (event: string, session: JsonSession | null) => void;
 const authListeners = new Set<AuthListener>();
 
