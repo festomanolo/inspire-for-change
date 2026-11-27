@@ -19,6 +19,8 @@ export type EventCategory =
   | "crusade"
   | "youth_retreat"
   | "leadership_summit"
+  | "seminar_workshop"
+  | "community_gala"
   | "worship_service";
 
 export type EventStatus = "upcoming" | "active" | "archived";
