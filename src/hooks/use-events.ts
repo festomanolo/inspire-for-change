@@ -52,7 +52,8 @@ export function useEvents() {
     const { data } = await supabase.from("events").select("*").order("year", { ascending: false });
     const rows = ((data as unknown as EventRow[]) ?? []).map((ev) => ({
       ...ev,
-      code: ev.code || `IFC-${String(ev.year).slice(-2)}`,
+      code: ev.code || buildSuggestedEventCode(ev.name, ev.year),
+      organizer: ev.organizer ?? null,
       category: ev.category || "conference",
       total_days: ev.total_days || 3,
       camping_enabled: ev.camping_enabled !== false,
