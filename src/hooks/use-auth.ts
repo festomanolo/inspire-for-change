@@ -26,7 +26,7 @@ export function useAuth() {
 
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
-      const u = (data.session?.user as any) ?? null;
+      const u = (data.session?.user as unknown as JsonUser | undefined) ?? null;
       currentUid = u?.id ?? null;
       setUser(u);
       if (u) loadProfile(u.id);
@@ -34,7 +34,7 @@ export function useAuth() {
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
-      const u = (session?.user as any) ?? null;
+      const u = (session?.user as unknown as JsonUser | undefined) ?? null;
       currentUid = u?.id ?? null;
       setUser(u);
       if (u) loadProfile(u.id);
