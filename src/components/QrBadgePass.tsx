@@ -91,6 +91,11 @@ export function QrBadgePass({
             </div>
 
             <div>
+              {event?.organizer && (
+                <p className="text-[11px] font-semibold text-accent">
+                  {event.organizer}
+                </p>
+              )}
               <p className="text-xs font-medium text-muted-foreground">
                 {event?.name || "Church Gathering"} {event?.year ? `(${event.year})` : ""}
               </p>
