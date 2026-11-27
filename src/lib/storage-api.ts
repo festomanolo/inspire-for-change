@@ -490,19 +490,160 @@ export const dbHandlers = {
       const index = guests.findIndex((g) => g.id === id);
       if (index === -1) throw new Error("Guest not found");
 
-      guests[index] = {
-        ...guests[index],
+      const prev = guests[index];
+      const nextDays = Array.isArray(updates.days_registered) && updates.days_registered.length > 0
+        ? Array.from(new Set(updates.days_registered)).sort((a, b) => a - b)
+        : updates.day !== undefined
+          ? updates.day
+            ? Array.from(new Set([...(prev.days_registered || []), updates.day])).sort((a, b) => a - b)
+            : prev.days_registered
+          : prev.days_registered;
+
+      const nextGender = updates.gender ?? prev.gender;
+      const nextStatus = updates.status ?? prev.status;
+      const nextAge = updates.age_group ?? prev.age_group;
+      const nextZone =
+        updates.accommodation_zone !== undefined
+          ? updates.accommodation_zone
+          : nextStatus === "not_camping"
+            ? null
+            : prev.accommodation_zone || suggestAccommodationZone(nextGender, nextStatus, nextAge);
+
+      const updated: Guest = {
+        ...prev,
         ...updates,
+        days_registered: nextDays,
+        day: nextDays[0] ?? null,
+        accommodation_zone: nextZone,
         updated_at: new Date().toISOString(),
       };
+
+      // Compute audit diff
+      const diff: Record<string, { from: unknown; to: unknown }> = {};
+      for (const key of TRACKED_GUEST_FIELDS) {
+        const beforeVal = prev[key];
+        const afterVal = updated[key];
+        if (JSON.stringify(beforeVal) !== JSON.stringify(afterVal)) {
+          diff[key] = { from: beforeVal, to: afterVal };
+        }
+      }
+
+      const prevCheckIns = JSON.stringify(prev.check_ins || {});
+      const nextCheckIns = JSON.stringify(updated.check_ins || {});
+      const isCheckInAction = prevCheckIns !== nextCheckIns && Object.keys(diff).length <= 1;
+
+      guests[index] = updated;
       writeJson(FILES.guests, guests);
-      return guests[index];
+
+      if (isCheckInAction) {
+        appendAuditLog({
+          guest_id: updated.id,
+          event_id: updated.event_id,
+          edited_by: updates.updated_by ?? prev.updated_by,
+          action: "check_in",
+          changes: { check_ins: { from: prev.check_ins, to: updated.check_ins } },
+        });
+      } else if (Object.keys(diff).length > 0) {
+        appendAuditLog({
+          guest_id: updated.id,
+          event_id: updated.event_id,
+          edited_by: updates.updated_by ?? prev.updated_by,
+          action: "update",
+          changes: diff,
+        });
+      }
+
+      return updated;
     },
 
-    delete: (id: string) => {
-      const guests = readJson<Guest[]>(FILES.guests, []);
+    delete: (id: string, deletedBy?: string | null) => {
+      const guests = loadNormalizedGuests();
+      const target = guests.find((g) => g.id === id);
       const filtered = guests.filter((g) => g.id !== id);
       writeJson(FILES.guests, filtered);
+      if (target) {
+        appendAuditLog({
+          guest_id: target.id,
+          event_id: target.event_id,
+          edited_by: deletedBy ?? target.updated_by,
+          action: "delete",
+          changes: {
+            reg_code: target.reg_code,
+            deleted_guest: `${target.first_name} ${target.last_name}`,
+          },
+        });
+      }
+    },
+
+    /** Consolidates legacy multi-row duplicate registrations of the exact same person into a single multi-day UUID record */
+    consolidateDuplicates: (eventId: string, actorId?: string | null) => {
+      const guests = loadNormalizedGuests();
+      const inEvent = guests.filter((g) => g.event_id === eventId);
+      const others = guests.filter((g) => g.event_id !== eventId);
+
+      const byIdentity = new Map<string, Guest[]>();
+      for (const g of inEvent) {
+        const key = [
+          g.first_name.trim().toLowerCase(),
+          (g.middle_name ?? "").trim().toLowerCase(),
+          g.last_name.trim().toLowerCase(),
+          g.phone.trim().toLowerCase(),
+        ].join("|");
+        const arr = byIdentity.get(key) ?? [];
+        arr.push(g);
+        byIdentity.set(key, arr);
+      }
+
+      let mergedCount = 0;
+      const consolidated: Guest[] = [];
+
+      for (const group of byIdentity.values()) {
+        if (group.length === 1) {
+          consolidated.push(group[0]);
+          continue;
+        }
+        // Sort oldest first so primary UUID & reg_code stay stable
+        group.sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+        const primary = { ...group[0] };
+        const mergedDays = new Set<number>(primary.days_registered);
+        const mergedCheckIns: Record<string, string> = { ...primary.check_ins };
+
+        for (let i = 1; i < group.length; i++) {
+          const dup = group[i];
+          dup.days_registered.forEach((d) => mergedDays.add(d));
+          if (dup.day) mergedDays.add(dup.day);
+          Object.assign(mergedCheckIns, dup.check_ins);
+          if (primary.gender === "unspecified" && dup.gender !== "unspecified") primary.gender = dup.gender;
+          if (!primary.church_name && dup.church_name) primary.church_name = dup.church_name;
+          if (dup.status === "camping") primary.status = "camping";
+          mergedCount++;
+        }
+
+        const sortedDays = Array.from(mergedDays).sort((a, b) => a - b);
+        primary.days_registered = sortedDays;
+        primary.day = sortedDays[0] ?? 1;
+        primary.check_ins = mergedCheckIns;
+        primary.updated_at = new Date().toISOString();
+        primary.updated_by = actorId ?? primary.updated_by;
+        consolidated.push(primary);
+
+        appendAuditLog({
+          guest_id: primary.id,
+          event_id: eventId,
+          edited_by: actorId ?? primary.updated_by,
+          action: "merge",
+          changes: {
+            merged_records: group.length,
+            days_registered: sortedDays,
+            reg_code: primary.reg_code,
+          },
+        });
+      }
+
+      if (mergedCount > 0) {
+        writeJson(FILES.guests, [...others, ...consolidated]);
+      }
+      return { mergedCount, remainingCount: consolidated.length };
     },
   },
 
@@ -519,38 +660,24 @@ export const dbHandlers = {
 
     getByField: (field: string, value: string, orderBy: string, ascending: boolean) => {
       const edits = readJson<GuestEdit[]>(FILES.guest_edits, []);
-      let filtered = edits.filter((e) => (e as any)[field] === value);
-
-      filtered = filtered.sort((a, b) => {
+      const filtered = edits.filter((e) => (e as any)[field] === value);
+      return filtered.sort((a, b) => {
         const aVal = (a as any)[orderBy] ?? "";
         const bVal = (b as any)[orderBy] ?? "";
         const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
         return ascending ? cmp : -cmp;
       });
-
-      return filtered;
     },
 
-    create: (row: Omit<GuestEdit, "id" | "edited_at">) => {
-      const edits = readJson<GuestEdit[]>(FILES.guest_edits, []);
-      const newEdit: GuestEdit = {
-        id: crypto.randomUUID(),
-        ...row,
-        edited_at: new Date().toISOString(),
-      };
-      edits.push(newEdit);
-      writeJson(FILES.guest_edits, edits);
-      return newEdit;
-    },
+    create: (row: Omit<GuestEdit, "id" | "edited_at">) => appendAuditLog(row),
   },
 };
 
-// Export all data function
 export function exportAllData() {
   return {
     profiles: readJson<Profile[]>(FILES.profiles, []),
-    events: readJson<EventRow[]>(FILES.events, []),
-    guests: readJson<Guest[]>(FILES.guests, []),
+    events: loadNormalizedEvents(),
+    guests: loadNormalizedGuests(),
     guest_edits: readJson<GuestEdit[]>(FILES.guest_edits, []),
     exported_at: new Date().toISOString(),
   };
