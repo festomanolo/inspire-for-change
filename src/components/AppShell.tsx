@@ -157,7 +157,12 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
           {/* Desktop Single-Line Navigation */}
           <nav aria-label="Primary navigation" className="hidden lg:flex lg:items-center lg:gap-1">
             {NAV_ITEMS.map((item) => {
-              const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+              const active =
+                item.to === "/"
+                  ? pathname === "/"
+                  : item.to === "/manager"
+                    ? pathname.startsWith("/manager") || pathname.startsWith("/admin")
+                    : pathname.startsWith(item.to);
               const Icon = item.Icon;
               return (
                 <Link
@@ -176,10 +181,10 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
             })}
           </nav>
 
-          {/* Right Controls: Event Switcher + Theme + Staff Menu */}
+          {/* Right Controls: Multi-Event Switcher + Quick Add + Theme + Staff Menu */}
           <div className="flex shrink-0 items-center gap-2">
             {selected && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1" ref={switcherRef}>
                 <div className="relative">
                   <select
                     id="event-year-selector"
