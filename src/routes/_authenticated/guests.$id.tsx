@@ -114,78 +114,149 @@ function GuestDetailPage() {
 
   const toggleDayCheckIn = async (dayNum: number) => {
     if (!user || !guest) return;
-    setError("");
+    const checked = isCheckedInForDay(guest, dayNum);
+    const nextCheckIns = { ...(guest.check_ins ?? {}) };
+    const nextDays = new Set<number>(guest.days_registered ?? [1]);
+
+    if (checked) {
+      delete nextCheckIns[String(dayNum)];
+    } else {
+      nextCheckIns[String(dayNum)] = new Date().toISOString();
+      nextDays.add(dayNum);
+    }
+
+    const { error } = await supabase
+      .from("guests")
+      .update({
+        check_ins: nextCheckIns as any,
+        days_registered: Array.from(nextDays).sort((a, b) => a - b),
+        updated_by: user.id,
+      } as any)
+      .eq("id", guest.id);
+
+    if (error) {
+      toast.error("Failed to update check-in");
+      return;
+    }
+    toast.success(checked ? `Cleared Day ${dayNum} check-in` : `Checked in for Day ${dayNum}`);
+    await load();
+  };
+
+  const saveChanges = async () => {
+    if (!user || !guest) return;
     setSaving(true);
+    const nextStatus = form.status || "not_camping";
+    const nextGender = (form.gender || "unspecified") as Gender;
+    const nextAge = (form.age_group || "adult") as AgeGroup;
+
     const { error: err } = await supabase
       .from("guests")
       .update({
         first_name: form.first_name,
         middle_name: form.middle_name || null,
         last_name: form.last_name,
+        gender: nextGender,
+        age_group: nextAge,
+        ministry_role: form.ministry_role || "member",
+        church_name: form.church_name || null,
         origin: form.origin,
-        phone: form.phone,
-        status: form.status,
-        day: form.day,
+        phone: form.phone || "",
+        is_shared_phone: Boolean(form.is_shared_phone),
+        guardian_name: form.guardian_name || null,
+        status: nextStatus,
+        accommodation_zone:
+          nextStatus === "camping"
+            ? form.accommodation_zone || suggestAccommodationZone(nextGender, nextStatus, nextAge)
+            : null,
+        dietary_medical: form.dietary_medical || null,
+        days_registered: form.days_registered?.length ? form.days_registered : [1],
         updated_by: user.id,
-      })
-      .eq("id", guest.id)
-      .eq("updated_at", guest.updated_at);
+      } as any)
+      .eq("id", guest.id);
+
     setSaving(false);
     if (err) {
-      setError(err.message);
+      toast.error(err.message || "Failed to save attendee record");
       return;
     }
     setEditing(false);
-    toast.success("Guest information updated successfully");
+    toast.success("Attendee profile updated");
     await load();
   };
 
-  const quickStatusToggle = async () => {
-    if (!user || !guest) return;
-    const next = guest.status === "camping" ? "not_camping" : "camping";
-    await supabase
-      .from("guests")
-      .update({ status: next, updated_by: user.id })
-      .eq("id", guest.id);
-    await load();
-  };
-
-  const remove = async () => {
-    if (!guest || !confirm("Delete this guest? This cannot be undone.")) return;
+  const handleDelete = async () => {
+    if (!guest) return;
     await supabase.from("guests").delete().eq("id", guest.id);
+    toast.success("Attendee record deleted");
     navigate({ to: "/guests" });
   };
 
-  if (!guest) return <div className="text-muted-foreground">Loading…</div>;
-
-  const fullName = [guest.first_name, guest.middle_name, guest.last_name].filter(Boolean).join(" ");
+  if (!guest) {
+    return <div className="py-16 text-center text-sm text-muted-foreground">Loading attendee profile…</div>;
+  }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <Link to="/guests" className="text-sm text-muted-foreground hover:text-foreground">
-        ← All guests
-      </Link>
-
-      <div className="flex items-start justify-between gap-4 mt-4 mb-8">
-        <div>
-          <h1 className="text-4xl">{fullName}</h1>
-          <p className="text-muted-foreground mt-2">{guest.origin}</p>
-        </div>
-        <button
-          onClick={quickStatusToggle}
-          className={`text-sm px-4 py-2 rounded-full border transition-all ${
-            guest.status === "camping"
-              ? "bg-accent text-accent-foreground border-accent"
-              : "bg-secondary text-secondary-foreground border-border"
-          }`}
+    <div className="mx-auto max-w-4xl space-y-6">
+      <div className="no-print flex items-center justify-between">
+        <Link
+          to="/guests"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground no-underline hover:text-foreground"
         >
-          {guest.status === "camping" ? "Camping" : "Not camping"} · tap to switch
-        </button>
+          <ArrowLeft size={15} aria-hidden="true" />
+          Back to directory
+        </Link>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCopyUuid}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 font-mono-code text-xs text-muted-foreground hover:text-foreground"
+          >
+            {copiedUuid ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+            UUID: {guest.id.slice(0, 8)}…
+          </button>
+        </div>
       </div>
 
-      <div className="surface-elevated p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg">Details</h2>
+      {/* Printable Lanyard Credential & QR Pass */}
+      <QrBadgePass guest={guest} event={guestEvent} />
+
+      {/* Interactive Gate Check-in Controls */}
+      <div className="no-print surface-card p-5">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-sm font-bold text-foreground">Daily gate check-in</h2>
+            <p className="text-xs text-muted-foreground">
+              Tap a day to record or revert physical sanctuary arrival.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {dayOptions.map((d) => {
+              const checked = isCheckedInForDay(guest, d);
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => toggleDayCheckIn(d)}
+                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-4 py-2 text-xs font-semibold ${
+                    checked
+                      ? "border-success/35 bg-success/12 text-success"
+                      : "border-border bg-secondary text-foreground hover:border-accent/40"
+                  }`}
+                >
+                  <CheckCircle size={15} weight={checked ? "fill" : "regular"} aria-hidden="true" />
+                  {checked ? `Day ${d} verified` : `Check in Day ${d}`}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Full Church Profile Details / Edit Mode */}
+      <div className="no-print surface-card p-6 sm:p-7">
+        <div className="mb-5 flex items-center justify-between border-b border-border pb-3">
+          <h2 className="text-base font-bold text-foreground">Attendee & ministry details</h2>
           {!editing ? (
             <button
               onClick={() => setEditing(true)}
