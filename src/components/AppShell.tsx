@@ -4,11 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { openEventStudio, useEvents } from "@/hooks/use-events";
 import { useState, useEffect, useRef } from "react";
 import { exportAllDataToCSV } from "@/lib/csv-export";
-import {
-  EVENT_STATUS_LABELS,
-  STAFF_ROLE_LABELS,
-  type EventStatus,
-} from "@/lib/types";
+import { EVENT_STATUS_LABELS, STAFF_ROLE_LABELS, type EventStatus } from "@/lib/types";
 import { EventStudioModal } from "@/components/EventStudioModal";
 import { toast } from "sonner";
 import {
@@ -117,7 +113,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
   const activeBrandTitle = selected?.organizer?.trim() || "Inspired for Change";
   const hasCustomOrganizer = Boolean(
     selected?.organizer?.trim() &&
-      selected.organizer.trim().toLowerCase() !== "inspired for change",
+    selected.organizer.trim().toLowerCase() !== "inspired for change",
   );
 
   return (
