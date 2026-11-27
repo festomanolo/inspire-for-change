@@ -128,10 +128,12 @@ export const MINISTRY_ROLE_LABELS: Record<MinistryRole, string> = {
 export const EVENT_CATEGORY_LABELS: Record<EventCategory, string> = {
   conference: "Conference & convention",
   camp: "Camp & retreat",
-  crusade: "Gospel crusade",
+  crusade: "Outreach & crusade",
   youth_retreat: "Youth & campus",
   leadership_summit: "Leadership summit",
-  worship_service: "Special worship service",
+  seminar_workshop: "Seminar & workshop",
+  community_gala: "Community & gala",
+  worship_service: "Special gathering",
 };
 
 export function suggestAccommodationZone(
