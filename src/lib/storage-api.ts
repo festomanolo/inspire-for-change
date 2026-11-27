@@ -58,6 +58,7 @@ function normalizeEvent(raw: Partial<EventRow> & { id: string; year: number; nam
     code: raw.code?.trim() || buildEventCode(raw.name, raw.year),
     year: raw.year,
     name: raw.name,
+    organizer: raw.organizer !== undefined ? (raw.organizer ? raw.organizer.trim() : null) : null,
     category: raw.category || "conference",
     subtitle: raw.subtitle ?? "Inspired for Change Fellowship Gathering",
     venue: raw.venue ?? "Main Sanctuary & Campgrounds",
