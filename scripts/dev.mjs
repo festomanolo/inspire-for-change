@@ -66,6 +66,8 @@ async function waitForBackend(url, timeoutMs = 8000) {
   return false;
 }
 
+const BACKEND_PORT = await findAvailablePort(PREFERRED_BACKEND_PORT);
+
 console.log(
   `${COLORS.bold}Starting Multi-Event Sanctuary Stack (Backend API :${BACKEND_PORT} + Frontend UI :${FRONTEND_PORT})...${COLORS.reset}`,
 );
