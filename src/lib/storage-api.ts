@@ -60,8 +60,8 @@ function normalizeEvent(raw: Partial<EventRow> & { id: string; year: number; nam
     name: raw.name,
     organizer: raw.organizer !== undefined ? (raw.organizer ? raw.organizer.trim() : null) : null,
     category: raw.category || "conference",
-    subtitle: raw.subtitle ?? "Inspired for Change Fellowship Gathering",
-    venue: raw.venue ?? "Main Sanctuary & Campgrounds",
+    subtitle: raw.subtitle !== undefined ? (raw.subtitle ? raw.subtitle.trim() : null) : null,
+    venue: raw.venue !== undefined ? (raw.venue ? raw.venue.trim() : null) : "Main Venue & Grounds",
     start_date: raw.start_date ?? null,
     end_date: raw.end_date ?? null,
     total_days: typeof raw.total_days === "number" && raw.total_days >= 1 ? raw.total_days : 3,
@@ -73,7 +73,7 @@ function normalizeEvent(raw: Partial<EventRow> & { id: string; year: number; nam
 }
 
 function generateRegCode(eventCode: string, sequenceNumber: number): string {
-  const cleanPrefix = (eventCode || "IFC-26").toUpperCase().replace(/[^A-Z0-9-]/g, "");
+  const cleanPrefix = (eventCode || "EVT-26").toUpperCase().replace(/[^A-Z0-9-]/g, "");
   return `${cleanPrefix}-${String(sequenceNumber).padStart(4, "0")}`;
 }
 
