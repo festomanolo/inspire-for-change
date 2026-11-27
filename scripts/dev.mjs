@@ -9,8 +9,8 @@ const FRONTEND_PORT = process.env.PORT || "8080";
 const COLORS = {
   reset: "\x1b[0m",
   bold: "\x1b[1m",
-  backend: "\x1b[36m", // cyan
-  frontend: "\x1b[32m", // green
+  backend: "\x1b[36m",
+  frontend: "\x1b[32m",
   warn: "\x1b[33m",
 };
 
