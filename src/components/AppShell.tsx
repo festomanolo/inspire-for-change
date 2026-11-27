@@ -35,14 +35,21 @@ const NAV_ITEMS = [
   { to: "/register", label: "Register", Icon: UserPlus },
   { to: "/checkin", label: "Check-in", Icon: QrCode },
   { to: "/guests", label: "Directory", Icon: UsersThree },
-  { to: "/admin", label: "Ministry ops", Icon: ShieldCheck },
+  { to: "/manager", label: "Manager", Icon: ChartBar },
 ] as const;
+
+function statusDotClass(status: EventStatus): string {
+  if (status === "active") return "bg-success";
+  if (status === "upcoming") return "bg-accent";
+  if (status === "completed") return "bg-warm";
+  return "bg-muted-foreground";
+}
 
 export function AppShell({ children }: { children?: React.ReactNode }) {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { events, selected, select, createEvent } = useEvents();
+  const { events, selected, select } = useEvents();
 
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
