@@ -379,10 +379,26 @@ function DashboardOverview() {
                             {g.reg_code}
                           </span>
                         </div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--color-muted-foreground)" }}>{g.origin}</div>
+                        <div className="flex items-center gap-2 truncate text-xs text-muted-foreground">
+                          {g.gender !== "unspecified" && <span>{GENDER_LABELS[g.gender]}</span>}
+                          <span>·</span>
+                          <span className="inline-flex items-center gap-1 truncate">
+                            <Church size={12} aria-hidden="true" />
+                            {g.church_name || g.origin}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <StatusPill status={g.status} />
+
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        g.status === "camping"
+                          ? "bg-warm/12 text-warm"
+                          : "bg-secondary text-muted-foreground"
+                      }`}
+                    >
+                      {g.status === "camping" ? "Camping" : "Day"}
+                    </span>
                   </Link>
                 </li>
               ))}
@@ -390,110 +406,73 @@ function DashboardOverview() {
           )}
         </div>
 
-        {/* Recent edits */}
-        <div className="surface-card" style={{ padding: "20px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-            <h2 style={{ margin: 0 }}>Recent activity</h2>
-            <Link to="/admin" style={{ fontSize: "0.8rem", color: "var(--color-accent)", textDecoration: "none", fontWeight: 500 }}>
-              Full log →
+        {/* Live Ministry Audit Stream */}
+        <div className="surface-card p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock size={18} className="text-accent" aria-hidden="true" />
+              <h2 className="text-foreground">Live registrar activity</h2>
+            </div>
+            <Link
+              to="/admin"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-accent no-underline hover:underline"
+            >
+              Audit log
+              <ArrowRight size={13} aria-hidden="true" />
             </Link>
           </div>
+
           {edits.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "32px 0", color: "var(--color-muted-foreground)", fontSize: "0.85rem" }}>
-              <div style={{ fontSize: "2rem", marginBottom: "8px" }}>📋</div>
-              No activity recorded yet.
+            <div className="rounded-xl border border-dashed border-border py-12 text-center">
+              <p className="text-sm font-semibold text-foreground">No registrar actions logged yet</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Every registration, profile edit, and gate check-in appears here automatically.
+              </p>
             </div>
           ) : (
-            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "12px" }}>
+            <ul className="divide-y divide-border">
               {edits.map((e) => {
-                const who = e.edited_by ? profiles[e.edited_by]?.display_name : "Unknown";
-                const isCreate = e.action === "create";
+                const who = e.edited_by ? profiles[e.edited_by]?.display_name ?? "Registrar" : "System";
+                const verb =
+                  e.action === "create"
+                    ? "registered"
+                    : e.action === "check_in"
+                      ? "checked in"
+                      : e.action === "delete"
+                        ? "removed"
+                        : e.action === "merge"
+                          ? "consolidated"
+                          : "updated";
+
                 return (
-                  <li key={e.id} style={{ fontSize: "0.83rem" }}>
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px" }}>
-                      <div style={{ display: "flex", gap: "8px", alignItems: "flex-start", minWidth: 0 }}>
-                        <span style={{
-                          marginTop: "1px", flexShrink: 0, width: "18px", height: "18px",
-                          borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center",
-                          background: isCreate ? "oklch(0.52 0.19 150 / 0.12)" : "oklch(0.65 0.18 60 / 0.12)",
-                          color: isCreate ? "var(--color-success)" : "oklch(0.55 0.18 60)",
-                          fontSize: "0.6rem",
-                        }}>
-                          {isCreate ? "✚" : "✎"}
+                  <li key={e.id} className="flex items-start justify-between gap-3 py-3 text-xs">
+                    <div className="min-w-0 leading-relaxed">
+                      <span className="font-semibold text-foreground">{who}</span>{" "}
+                      <span className="text-muted-foreground">{verb}</span>{" "}
+                      {e.guest ? (
+                        <Link
+                          to="/guests/$id"
+                          params={{ id: e.guest.id }}
+                          className="font-semibold text-accent no-underline hover:underline"
+                        >
+                          {formatFullName(e.guest)} ({e.guest.reg_code})
+                        </Link>
+                      ) : (
+                        <span className="font-medium text-foreground">
+                          {(e.changes as any)?.name || (e.changes as any)?.deleted_guest || "attendee"}
                         </span>
-                        <span style={{ lineHeight: 1.4 }}>
-                          <span style={{ fontWeight: 600 }}>{who}</span>{" "}
-                          <span style={{ color: "var(--color-muted-foreground)" }}>
-                            {isCreate ? "registered" : "updated"}
-                          </span>{" "}
-                          {e.guest && (
-                            <Link
-                              to="/guests/$id"
-                              params={{ id: e.guest.id }}
-                              style={{ fontWeight: 600, color: "var(--color-accent)", textDecoration: "none" }}
-                            >
-                              {e.guest.first_name} {e.guest.last_name}
-                            </Link>
-                          )}
-                        </span>
-                      </div>
-                      <span style={{ fontSize: "0.72rem", color: "var(--color-muted-foreground)", whiteSpace: "nowrap", flexShrink: 0 }}>
-                        {formatDistanceToNow(new Date(e.edited_at), { addSuffix: true })}
-                      </span>
+                      )}
                     </div>
+                    <span className="shrink-0 text-muted-foreground">
+                      {formatDistanceToNow(new Date(e.edited_at), { addSuffix: true })}
+                    </span>
                   </li>
                 );
               })}
             </ul>
           )}
         </div>
-      </div>
+      </section>
     </div>
-  );
-}
-
-function StatCard({
-  label, value, emoji, accentColor, accent,
-}: {
-  label: string; value: number; emoji: string; accentColor: string; accent?: boolean;
-}) {
-  return (
-    <div
-      className="surface-card"
-      style={{
-        padding: "14px 14px 12px",
-        ...(accent ? {
-          background: `${accentColor}08`,
-          borderColor: `${accentColor}25`,
-        } : {}),
-        transition: "transform 0.15s ease, box-shadow 0.15s ease",
-        cursor: "default",
-      }}
-    >
-      <div style={{ fontSize: "1.1rem", marginBottom: "6px" }}>{emoji}</div>
-      <div style={{
-        fontSize: "clamp(1.5rem, 5vw, 2rem)", fontWeight: 700, letterSpacing: "-0.04em",
-        lineHeight: 1, color: accentColor, marginBottom: "4px",
-      }}>
-        {value}
-      </div>
-      <div style={{ fontSize: "0.72rem", color: "var(--color-muted-foreground)", fontWeight: 500, lineHeight: 1.2 }}>
-        {label}
-      </div>
-    </div>
-  );
-}
-
-function StatusPill({ status }: { status: "camping" | "not_camping" }) {
-  return (
-    <span style={{
-      fontSize: "0.68rem", padding: "3px 8px", borderRadius: "9999px", flexShrink: 0,
-      fontWeight: 600,
-      background: status === "camping" ? "oklch(0.55 0.22 258 / 0.1)" : "var(--color-muted)",
-      color: status === "camping" ? "var(--color-accent)" : "var(--color-muted-foreground)",
-      border: `1px solid ${status === "camping" ? "oklch(0.55 0.22 258 / 0.2)" : "var(--color-border)"}`,
-    }}>
-      {status === "camping" ? "⛺ Camping" : "☀️ Day"}
-    </span>
   );
 }
