@@ -114,6 +114,12 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
         .toUpperCase()
     : "ST";
 
+  const activeBrandTitle = selected?.organizer?.trim() || "Inspired for Change";
+  const hasCustomOrganizer = Boolean(
+    selected?.organizer?.trim() &&
+      selected.organizer.trim().toLowerCase() !== "inspired for change",
+  );
+
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
       <a
@@ -126,10 +132,10 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
       {/* Top Navigation Header */}
       <header className="no-print surface-glass sticky top-0 z-40 border-b border-border">
         <div className="mx-auto flex h-16 max-w-[1320px] items-center justify-between gap-3 px-4 sm:px-6">
-          {/* Brand Identity */}
+          {/* Dynamic Brand / Active Host Identity */}
           <Link
             to="/"
-            className="flex shrink-0 items-center gap-2.5 text-foreground no-underline"
+            className="flex min-w-0 shrink items-center gap-2.5 text-foreground no-underline"
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
               <Church size={19} weight="duotone" aria-hidden="true" />
