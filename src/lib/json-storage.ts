@@ -334,6 +334,7 @@ function makeGuestBuilder(params: URLSearchParams) {
 function makeProfileBuilder(params: URLSearchParams) {
   const builder: any = {
     _params: params,
+    _updatePayload: null as any,
 
     eq(field: string, value: string) {
       this._params.set(field, value);
