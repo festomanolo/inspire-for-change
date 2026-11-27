@@ -173,6 +173,7 @@ function MinistryAdminPage() {
         code: eventConfig.code.trim().toUpperCase() || selected.code,
         year: eventConfig.year,
         category: eventConfig.category,
+        status: eventConfig.status,
         total_days: Math.max(1, Math.min(14, eventConfig.total_days)),
         capacity: eventConfig.capacity,
         venue: eventConfig.venue || null,
@@ -257,12 +258,12 @@ function MinistryAdminPage() {
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-accent">
             <ShieldCheck size={15} weight="fill" aria-hidden="true" />
-            <span>Ministry operations & governance</span>
+            <span>{selected.organizer || "Event operations & governance"}</span>
           </div>
           <h1 className="mt-1">{selected.name} administration</h1>
         </div>
 
-        {duplicateRowCount > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             disabled={merging}
