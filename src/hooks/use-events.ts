@@ -26,6 +26,7 @@ export function openEventStudio(detail: EventStudioDetail = { mode: "create" }) 
 export type CreateChurchEventInput = {
   name: string;
   year: number;
+  organizer?: string | null;
   code?: string;
   category?: EventCategory;
   subtitle?: string | null;
@@ -37,6 +38,8 @@ export type CreateChurchEventInput = {
   camping_enabled?: boolean;
   status?: EventStatus;
 };
+
+export type CreateEventInput = CreateChurchEventInput;
 
 export function useEvents() {
   const [events, setEvents] = useState<EventRow[]>([]);
