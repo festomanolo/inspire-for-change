@@ -1,453 +1,748 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEvents } from "@/hooks/use-events";
-import type { Guest, GuestEdit, Profile } from "@/lib/types";
-import { formatDistanceToNow, format } from "date-fns";
+import { useAuth } from "@/hooks/use-auth";
+import { consolidateEventDuplicates } from "@/lib/json-storage";
+import {
+  AGE_GROUP_LABELS,
+  EVENT_CATEGORY_LABELS,
+  GENDER_LABELS,
+  MINISTRY_ROLE_LABELS,
+  formatFullName,
+  type AgeGroup,
+  type EventCategory,
+  type Guest,
+  type GuestEdit,
+  type Profile,
+} from "@/lib/types";
+import { format, formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
+import {
+  ArrowsMerge,
+  CalendarBlank,
+  ChartBar,
+  Church,
+  ClockCounterClockwise,
+  FloppyDisk,
+  Medal,
+  ShieldCheck,
+  Sparkle,
+  UsersThree,
+} from "@phosphor-icons/react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
-  head: () => ({ meta: [{ title: "Admin — Inspired for Change" }] }),
-  component: AdminPage,
+  head: () => ({ meta: [{ title: "Ministry Operations — Inspired for Change" }] }),
+  component: MinistryAdminPage,
 });
 
-function AdminPage() {
-  const { selected, events } = useEvents();
+type AdminTab = "analytics" | "events" | "audit" | "team";
+
+function MinistryAdminPage() {
+  const { selected, events, select, updateEvent, refresh: refreshEvents } = useEvents();
+  const { user } = useAuth();
+
   const [guests, setGuests] = useState<Guest[]>([]);
   const [edits, setEdits] = useState<(GuestEdit & { guest?: Guest | null })[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "activity" | "staff">("overview");
+  const [activeTab, setActiveTab] = useState<AdminTab>("analytics");
+  const [merging, setMerging] = useState(false);
+  const [savingEvent, setSavingEvent] = useState(false);
+
+  const [eventConfig, setEventConfig] = useState({
+    name: "",
+    year: 2026,
+    category: "conference" as EventCategory,
+    total_days: 3,
+    capacity: 500,
+    venue: "",
+    subtitle: "",
+    camping_enabled: true,
+  });
+
+  const loadData = async () => {
+    if (!selected) return;
+    setLoading(true);
+
+    const { data: gs } = await supabase
+      .from("guests")
+      .select("*")
+      .eq("event_id", selected.id)
+      .order("created_at", { ascending: false });
+    setGuests((gs as unknown as Guest[]) ?? []);
+
+    const { data: es } = await supabase
+      .from("guest_edits")
+      .select("*, guest:guests(*)")
+      .order("edited_at", { ascending: false })
+      .limit(120);
+    const filteredEdits = ((es as unknown as (GuestEdit & { guest?: Guest })[]) ?? []).filter(
+      (e) => e.event_id === selected.id || e.guest?.event_id === selected.id,
+    );
+    setEdits(filteredEdits);
+
+    const { data: ps } = await supabase.from("profiles").select("*");
+    const map: Record<string, Profile> = {};
+    ((ps as unknown as Profile[]) ?? []).forEach((p) => {
+      map[p.id] = p;
+    });
+    setProfiles(map);
+    setLoading(false);
+  };
 
   useEffect(() => {
     if (!selected) return;
-    let cancelled = false;
-
-    const load = async () => {
-      setLoading(true);
-
-      const { data: gs } = await supabase
-        .from("guests")
-        .select("*")
-        .eq("event_id", selected.id)
-        .order("created_at", { ascending: false });
-
-      if (cancelled) return;
-      setGuests((gs as Guest[]) ?? []);
-
-      const { data: es } = await supabase
-        .from("guest_edits")
-        .select("*, guest:guests(*)")
-        .order("edited_at", { ascending: false })
-        .limit(100);
-
-      if (cancelled) return;
-      const filtered = ((es as (GuestEdit & { guest?: Guest })[]) ?? []).filter(
-        (e) => e.guest?.event_id === selected.id,
-      );
-      setEdits(filtered);
-
-      const { data: ps } = await supabase.from("profiles").select("*");
-      if (cancelled) return;
-      const map: Record<string, Profile> = {};
-      ((ps as Profile[]) ?? []).forEach((p) => (map[p.id] = p));
-      setProfiles(map);
-      setLoading(false);
-    };
-
-    load();
+    setEventConfig({
+      name: selected.name,
+      year: selected.year,
+      category: selected.category || "conference",
+      total_days: selected.total_days || 3,
+      capacity: selected.capacity || 500,
+      venue: selected.venue || "",
+      subtitle: selected.subtitle || "",
+      camping_enabled: selected.camping_enabled !== false,
+    });
+    loadData();
 
     const channel = supabase
       .channel("admin-" + selected.id)
-      .on("postgres_changes", { event: "*", schema: "public", table: "guests" }, load)
-      .on("postgres_changes", { event: "*", schema: "public", table: "guest_edits" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "guests" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "guest_edits" }, () => loadData())
       .subscribe();
 
     return () => {
-      cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [selected]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
 
-  const totalGuests = guests.length;
-  const campers = guests.filter((g) => g.status === "camping").length;
-  const notCampers = totalGuests - campers;
-  const day1 = guests.filter((g) => g.day === 1).length;
-  const day2 = guests.filter((g) => g.day === 2).length;
-  const day3 = guests.filter((g) => g.day === 3).length;
-  const totalEdits = edits.length;
-  const creates = edits.filter((e) => e.action === "create").length;
-  const updates = edits.filter((e) => e.action === "update").length;
+  // Detect potential legacy multi-row same-person duplicates
+  const duplicateRowCount = useMemo(() => {
+    const seen = new Set<string>();
+    let extra = 0;
+    for (const g of guests) {
+      const key = [
+        g.first_name.trim().toLowerCase(),
+        (g.middle_name ?? "").trim().toLowerCase(),
+        g.last_name.trim().toLowerCase(),
+        g.phone.trim().toLowerCase(),
+      ].join("|");
+      if (seen.has(key)) extra++;
+      else seen.add(key);
+    }
+    return extra;
+  }, [guests]);
 
-  // Staff activity stats
-  const staffStats: Record<string, { name: string; creates: number; updates: number }> = {};
-  edits.forEach((e) => {
-    const id = e.edited_by ?? "unknown";
-    const name = e.edited_by ? (profiles[e.edited_by]?.display_name ?? "Unknown") : "Unknown";
-    if (!staffStats[id]) staffStats[id] = { name, creates: 0, updates: 0 };
-    if (e.action === "create") staffStats[id].creates++;
-    else staffStats[id].updates++;
-  });
-  const staffList = Object.entries(staffStats).sort(
-    (a, b) => (b[1].creates + b[1].updates) - (a[1].creates + a[1].updates),
+  const handleConsolidateDuplicates = async () => {
+    if (!selected) return;
+    setMerging(true);
+    try {
+      const res = await consolidateEventDuplicates(selected.id, user?.id);
+      if (res.mergedCount > 0) {
+        toast.success(
+          `Consolidated ${res.mergedCount} duplicate multi-day row(s) into canonical UUID records`,
+        );
+      } else {
+        toast.info("All records are already unique canonical UUID profiles");
+      }
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Consolidation failed");
+    } finally {
+      setMerging(false);
+    }
+  };
+
+  const handleSaveEventConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selected) return;
+    setSavingEvent(true);
+    try {
+      await updateEvent(selected.id, {
+        name: eventConfig.name,
+        year: eventConfig.year,
+        category: eventConfig.category,
+        total_days: Math.max(1, Math.min(14, eventConfig.total_days)),
+        capacity: eventConfig.capacity,
+        venue: eventConfig.venue || null,
+        subtitle: eventConfig.subtitle || null,
+        camping_enabled: eventConfig.camping_enabled,
+      });
+      await refreshEvents();
+      toast.success("Event configuration saved");
+    } catch (err: any) {
+      toast.error(err?.message || "Could not update event");
+    } finally {
+      setSavingEvent(false);
+    }
+  };
+
+  // Ministry Intelligence Computations
+  const maleCount = guests.filter((g) => g.gender === "male").length;
+  const femaleCount = guests.filter((g) => g.gender === "female").length;
+  const unspecifiedGenderCount = guests.filter((g) => g.gender === "unspecified").length;
+
+  const ageStats = useMemo(() => {
+    const counts: Record<AgeGroup, number> = {
+      child: 0,
+      youth: 0,
+      young_adult: 0,
+      adult: 0,
+      elder: 0,
+    };
+    guests.forEach((g) => {
+      const ag = g.age_group || "adult";
+      if (counts[ag] !== undefined) counts[ag]++;
+    });
+    return counts;
+  }, [guests]);
+
+  const churchRankings = useMemo(() => {
+    const counts = new Map<string, number>();
+    guests.forEach((g) => {
+      const label = (g.church_name || g.origin || "Unspecified").trim();
+      counts.set(label, (counts.get(label) ?? 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+  }, [guests]);
+
+  const pastoralFollowUps = useMemo(
+    () =>
+      guests.filter(
+        (g) =>
+          g.ministry_role === "first_timer" ||
+          g.ministry_role === "visitor" ||
+          Boolean(g.dietary_medical),
+      ),
+    [guests],
   );
 
-  if (!selected) return <div style={{ color: "var(--color-muted-foreground)" }}>Loading…</div>;
+  const staffStats = useMemo(() => {
+    const map: Record<string, { name: string; creates: number; checkIns: number; updates: number }> = {};
+    edits.forEach((e) => {
+      const id = e.edited_by ?? "system";
+      const name = e.edited_by ? profiles[e.edited_by]?.display_name ?? "Registrar" : "System";
+      if (!map[id]) map[id] = { name, creates: 0, checkIns: 0, updates: 0 };
+      if (e.action === "create") map[id].creates++;
+      else if (e.action === "check_in") map[id].checkIns++;
+      else map[id].updates++;
+    });
+    return Object.entries(map).sort(
+      (a, b) =>
+        b[1].creates + b[1].checkIns + b[1].updates - (a[1].creates + a[1].checkIns + a[1].updates),
+    );
+  }, [edits, profiles]);
+
+  if (!selected) {
+    return <div className="py-16 text-center text-sm text-muted-foreground">Loading ministry operations…</div>;
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="slide-up" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: "5px",
-            padding: "3px 10px", borderRadius: "9999px", fontSize: "0.72rem", fontWeight: 700,
-            background: "oklch(0.55 0.22 258 / 0.1)", color: "var(--color-accent)",
-            border: "1px solid oklch(0.55 0.22 258 / 0.2)",
-          }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-            ADMIN PANEL
-          </span>
-          <h1 style={{ margin: 0, lineHeight: 1 }}>Activity Dashboard</h1>
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-semibold text-accent">
+            <ShieldCheck size={15} weight="fill" aria-hidden="true" />
+            <span>Ministry operations & governance</span>
+          </div>
+          <h1 className="mt-1">{selected.name} administration</h1>
         </div>
-        <p style={{ fontSize: "0.85rem", color: "var(--color-muted-foreground)", marginTop: "2px" }}>
-          Full visibility into all guest registrations and staff actions for <strong>{selected.name}</strong>
-        </p>
-      </div>
 
-      {/* Event selector note */}
-      <div style={{
-        padding: "12px 16px", borderRadius: "12px", fontSize: "0.82rem",
-        background: "oklch(0.55 0.22 258 / 0.06)", border: "1px solid oklch(0.55 0.22 258 / 0.15)",
-        color: "var(--color-accent)", display: "flex", alignItems: "center", gap: "8px",
-      }}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        Viewing data for <strong style={{ marginLeft: "4px" }}>{selected.name}</strong>. Use the event selector in the header to switch years.
-      </div>
-
-      {/* Tab bar */}
-      <div style={{ display: "flex", gap: "4px", background: "var(--color-secondary)", borderRadius: "12px", padding: "4px", width: "fit-content" }}>
-        {(["overview", "activity", "staff"] as const).map((tab) => (
+        {duplicateRowCount > 0 && (
           <button
-            key={tab}
-            id={`admin-tab-${tab}`}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              padding: "8px 18px", borderRadius: "9px", fontSize: "0.82rem", fontWeight: 500,
-              border: "none", cursor: "pointer", transition: "all 0.15s ease",
-              background: activeTab === tab ? "var(--color-card)" : "transparent",
-              color: activeTab === tab ? "var(--color-foreground)" : "var(--color-muted-foreground)",
-              boxShadow: activeTab === tab ? "var(--shadow-soft)" : "none",
-              textTransform: "capitalize",
-            }}
+            type="button"
+            disabled={merging}
+            onClick={handleConsolidateDuplicates}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-warm/40 bg-warm/12 px-4 py-2 text-xs font-semibold text-warm hover:bg-warm/18"
           >
-            {tab === "overview" ? "📊 Overview" : tab === "activity" ? "📋 Activity Log" : "👥 Staff"}
+            <ArrowsMerge size={15} weight="bold" aria-hidden="true" />
+            {merging
+              ? "Consolidating…"
+              : `Merge ${duplicateRowCount} legacy duplicate row${duplicateRowCount > 1 ? "s" : ""}`}
           </button>
-        ))}
+        )}
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="flex flex-wrap gap-1.5 rounded-2xl border border-border bg-card p-1.5 w-fit">
+        {(
+          [
+            { id: "analytics", label: "Ministry intelligence", Icon: ChartBar },
+            { id: "events", label: "Events & settings", Icon: CalendarBlank },
+            { id: "audit", label: `Audit trail (${edits.length})`, Icon: ClockCounterClockwise },
+            { id: "team", label: "Registrar team", Icon: UsersThree },
+          ] as const
+        ).map((tab) => {
+          const Icon = tab.Icon;
+          const active = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              id={`admin-tab-${tab.id}`}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold ${
+                active
+                  ? "bg-primary text-primary-foreground shadow-2xs"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+              }`}
+            >
+              <Icon size={15} weight={active ? "fill" : "regular"} aria-hidden="true" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "60px", color: "var(--color-muted-foreground)" }}>
-          Loading admin data…
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="h-44 animate-pulse rounded-2xl bg-secondary" />
+          ))}
         </div>
       ) : (
         <>
-          {/* Overview tab */}
-          {activeTab === "overview" && (
+          {/* TAB 1: MINISTRY INTELLIGENCE */}
+          {activeTab === "analytics" && (
             <div className="fade-in space-y-6">
-              {/* Stat grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "12px" }}>
-                {[
-                  { label: "Total Guests", value: totalGuests, color: "oklch(0.55 0.22 258)", bg: "oklch(0.55 0.22 258 / 0.08)" },
-                  { label: "Camping", value: campers, color: "oklch(0.52 0.19 150)", bg: "oklch(0.52 0.19 150 / 0.08)" },
-                  { label: "Not Camping", value: notCampers, color: "oklch(0.6 0.01 250)", bg: "transparent" },
-                  { label: "Day 1", value: day1, color: "oklch(0.65 0.2 290)", bg: "oklch(0.65 0.2 290 / 0.08)" },
-                  { label: "Day 2", value: day2, color: "oklch(0.6 0.2 320)", bg: "oklch(0.6 0.2 320 / 0.08)" },
-                  { label: "Day 3", value: day3, color: "oklch(0.58 0.22 27)", bg: "oklch(0.58 0.22 27 / 0.08)" },
-                  { label: "Total Actions", value: totalEdits, color: "oklch(0.55 0.18 220)", bg: "oklch(0.55 0.18 220 / 0.08)" },
-                  { label: "Registrations", value: creates, color: "oklch(0.52 0.19 150)", bg: "oklch(0.52 0.19 150 / 0.08)" },
-                  { label: "Updates", value: updates, color: "oklch(0.65 0.18 60)", bg: "oklch(0.65 0.18 60 / 0.08)" },
-                ].map((s, i) => (
-                  <div key={i} className={`surface-card stagger-${Math.min(i + 1, 6)}`} style={{ padding: "18px", background: s.bg, borderColor: `${s.color}30` }}>
-                    <div style={{ fontSize: "0.75rem", color: "var(--color-muted-foreground)", marginBottom: "6px" }}>{s.label}</div>
-                    <div style={{ fontSize: "2rem", fontWeight: 700, color: s.color, letterSpacing: "-0.04em", lineHeight: 1 }}>
-                      {s.value}
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+                {/* Gender & Demographics Card */}
+                <div className="surface-card space-y-4 p-6">
+                  <h2 className="text-base font-bold text-foreground">Gender & demographics</h2>
+                  <div className="space-y-3 text-xs">
+                    {[
+                      { label: "Male attendees", count: maleCount },
+                      { label: "Female attendees", count: femaleCount },
+                      ...(unspecifiedGenderCount > 0
+                        ? [{ label: "Legacy (gender unrecorded)", count: unspecifiedGenderCount }]
+                        : []),
+                    ].map((item) => {
+                      const pct = guests.length ? Math.round((item.count / guests.length) * 100) : 0;
+                      return (
+                        <div key={item.label} className="space-y-1">
+                          <div className="flex justify-between">
+                            <span className="font-medium text-foreground">{item.label}</span>
+                            <span className="font-mono-code text-muted-foreground">
+                              {item.count} ({pct}%)
+                            </span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                            <div
+                              className="h-full rounded-full bg-primary"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="border-t border-border pt-4">
+                    <h3 className="mb-2.5 text-xs font-semibold text-muted-foreground">
+                      Age group distribution
+                    </h3>
+                    <div className="space-y-2 text-xs">
+                      {(Object.keys(AGE_GROUP_LABELS) as AgeGroup[]).map((ag) => (
+                        <div key={ag} className="flex items-center justify-between">
+                          <span className="text-foreground">{AGE_GROUP_LABELS[ag]}</span>
+                          <span className="rounded bg-secondary px-2 py-0.5 font-mono-code font-semibold">
+                            {ageStats[ag]}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
 
-              {/* All events summary */}
-              <div className="surface-card" style={{ padding: "20px" }}>
-                <h2 style={{ marginBottom: "14px" }}>All Event Years</h2>
-                {events.length === 0 ? (
-                  <p style={{ color: "var(--color-muted-foreground)", fontSize: "0.85rem" }}>No events found.</p>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {events.map((ev) => (
-                      <div key={ev.id} style={{
-                        display: "flex", alignItems: "center", justifyContent: "space-between",
-                        padding: "10px 14px", borderRadius: "10px", background: "var(--color-secondary)",
-                        ...(ev.id === selected.id ? { border: "1.5px solid oklch(0.55 0.22 258 / 0.3)" } : {}),
-                      }}>
-                        <span style={{ fontSize: "0.88rem", fontWeight: ev.id === selected.id ? 600 : 400 }}>
-                          {ev.name}
-                          {ev.id === selected.id && <span style={{ fontSize: "0.7rem", color: "var(--color-accent)", marginLeft: "8px" }}>● current</span>}
-                        </span>
-                      </div>
-                    ))}
+                {/* Parishes & Delegations Represented */}
+                <div className="surface-card space-y-4 p-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold text-foreground">Parishes & origins</h2>
+                    <Church size={18} className="text-accent" aria-hidden="true" />
                   </div>
-                )}
+                  {churchRankings.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No parish data yet.</p>
+                  ) : (
+                    <ul className="divide-y divide-border text-xs">
+                      {churchRankings.map(([label, count]) => (
+                        <li key={label} className="flex items-center justify-between py-2.5">
+                          <span className="truncate pr-3 font-medium text-foreground">{label}</span>
+                          <span className="shrink-0 rounded-full bg-accent/12 px-2.5 py-0.5 font-mono-code font-semibold text-accent">
+                            {count}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Pastoral Follow-up & Special Welfare */}
+                <div className="surface-card space-y-4 p-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold text-foreground">Pastoral & welfare care</h2>
+                    <Sparkle size={18} className="text-warm" weight="fill" aria-hidden="true" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    First-time visitors, visiting guests, and attendees with medical or dietary notes.
+                  </p>
+
+                  {pastoralFollowUps.length === 0 ? (
+                    <div className="rounded-xl bg-secondary/50 p-4 text-xs text-muted-foreground">
+                      No visitors or special welfare notes recorded yet.
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-border text-xs">
+                      {pastoralFollowUps.slice(0, 6).map((g) => (
+                        <li key={g.id} className="py-2.5">
+                          <Link
+                            to="/guests/$id"
+                            params={{ id: g.id }}
+                            className="font-semibold text-foreground no-underline hover:text-accent"
+                          >
+                            {formatFullName(g)} ({g.reg_code})
+                          </Link>
+                          <div className="mt-0.5 text-muted-foreground">
+                            {MINISTRY_ROLE_LABELS[g.ministry_role]}
+                            {g.dietary_medical ? ` · Note: ${g.dietary_medical}` : ""}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
-          {/* Activity Log tab */}
-          {activeTab === "activity" && (
-            <div className="fade-in surface-card" style={{ overflow: "hidden" }}>
-              <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--color-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <h2 style={{ margin: 0 }}>Full Activity Log</h2>
-                <span style={{ fontSize: "0.78rem", color: "var(--color-muted-foreground)" }}>
-                  {edits.length} action{edits.length !== 1 ? "s" : ""}
+          {/* TAB 2: EVENTS & SANCTUARY SETTINGS */}
+          {activeTab === "events" && (
+            <div className="fade-in grid grid-cols-1 gap-6 lg:grid-cols-12">
+              <div className="surface-card p-6 lg:col-span-7">
+                <h2 className="mb-1 text-base font-bold text-foreground">
+                  Configure "{selected.name}" ({selected.code})
+                </h2>
+                <p className="mb-5 text-xs text-muted-foreground">
+                  Update total days, sanctuary venue, capacity target, or dormitory settings.
+                </p>
+
+                <form onSubmit={handleSaveEventConfig} className="space-y-4">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="sm:col-span-2">
+                      <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                        Event name
+                      </label>
+                      <input
+                        required
+                        value={eventConfig.name}
+                        onChange={(e) => setEventConfig({ ...eventConfig, name: e.target.value })}
+                        className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-foreground">Year</label>
+                      <input
+                        type="number"
+                        value={eventConfig.year}
+                        onChange={(e) =>
+                          setEventConfig({ ...eventConfig, year: Number(e.target.value) })
+                        }
+                        className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 font-mono-code text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                        Category
+                      </label>
+                      <select
+                        value={eventConfig.category}
+                        onChange={(e) =>
+                          setEventConfig({
+                            ...eventConfig,
+                            category: e.target.value as EventCategory,
+                          })
+                        }
+                        className="w-full rounded-xl border border-border bg-input px-3 py-2.5 text-sm"
+                      >
+                        {Object.entries(EVENT_CATEGORY_LABELS).map(([k, lbl]) => (
+                          <option key={k} value={k}>
+                            {lbl}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                        Total days
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={14}
+                        value={eventConfig.total_days}
+                        onChange={(e) =>
+                          setEventConfig({ ...eventConfig, total_days: Number(e.target.value) })
+                        }
+                        className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 font-mono-code text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                        Target capacity
+                      </label>
+                      <input
+                        type="number"
+                        min={10}
+                        value={eventConfig.capacity}
+                        onChange={(e) =>
+                          setEventConfig({ ...eventConfig, capacity: Number(e.target.value) })
+                        }
+                        className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 font-mono-code text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                      Venue / Sanctuary location
+                    </label>
+                    <input
+                      value={eventConfig.venue}
+                      onChange={(e) => setEventConfig({ ...eventConfig, venue: e.target.value })}
+                      className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                      Theme / Scripture subtitle
+                    </label>
+                    <input
+                      value={eventConfig.subtitle}
+                      onChange={(e) => setEventConfig({ ...eventConfig, subtitle: e.target.value })}
+                      className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm"
+                    />
+                  </div>
+
+                  <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border bg-secondary/50 px-3.5 py-2.5 text-xs font-medium text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={eventConfig.camping_enabled}
+                      onChange={(e) =>
+                        setEventConfig({ ...eventConfig, camping_enabled: e.target.checked })
+                      }
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span>Enable camping & dormitory assignments</span>
+                  </label>
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      disabled={savingEvent}
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground hover:opacity-95 disabled:opacity-50"
+                    >
+                      <FloppyDisk size={15} aria-hidden="true" />
+                      {savingEvent ? "Saving…" : "Save event settings"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* All Church Events List + Data Hygiene */}
+              <div className="space-y-5 lg:col-span-5">
+                <div className="surface-card p-6">
+                  <h2 className="mb-3 text-base font-bold text-foreground">All church events</h2>
+                  <div className="space-y-2">
+                    {events.map((ev) => {
+                      const isCurrent = ev.id === selected.id;
+                      return (
+                        <button
+                          key={ev.id}
+                          type="button"
+                          onClick={() => select(ev.id)}
+                          className={`flex w-full cursor-pointer items-center justify-between rounded-xl border px-4 py-3 text-left text-xs ${
+                            isCurrent
+                              ? "border-primary bg-primary/8 font-semibold text-foreground"
+                              : "border-border bg-secondary/40 text-foreground hover:bg-secondary"
+                          }`}
+                        >
+                          <div>
+                            <span className="block text-sm font-semibold">{ev.name}</span>
+                            <span className="text-muted-foreground">
+                              {EVENT_CATEGORY_LABELS[ev.category] || "Event"} · {ev.total_days || 3} days
+                            </span>
+                          </div>
+                          <span className="font-mono-code font-semibold text-accent">{ev.code}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="surface-card space-y-3 p-6">
+                  <h2 className="text-base font-bold text-foreground">UUID & data integrity</h2>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Earlier versions created multiple rows when one person attended multiple days. Run consolidation to merge identical attendees into a single canonical UUID record with combined <code className="font-mono-code">days_registered</code>.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={merging}
+                    onClick={handleConsolidateDuplicates}
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted"
+                  >
+                    <ArrowsMerge size={15} className="text-accent" aria-hidden="true" />
+                    {merging ? "Scanning…" : "Verify & merge duplicate multi-day rows"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: AUDIT LOG */}
+          {activeTab === "audit" && (
+            <div className="fade-in surface-card overflow-hidden">
+              <div className="flex items-center justify-between border-b border-border px-6 py-4">
+                <h2 className="text-base font-bold text-foreground">Complete audit trail</h2>
+                <span className="font-mono-code text-xs text-muted-foreground">
+                  {edits.length} actions
                 </span>
               </div>
 
               {edits.length === 0 ? (
-                <div style={{ padding: "48px", textAlign: "center", color: "var(--color-muted-foreground)", fontSize: "0.88rem" }}>
-                  No activity recorded yet.
+                <div className="p-12 text-center text-xs text-muted-foreground">
+                  No audit events logged yet for this church event.
                 </div>
               ) : (
-                <div style={{ overflowX: "auto" }}>
-                  {/* Desktop table */}
-                  <table className="hidden md:table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-xs">
                     <thead>
-                      <tr style={{ background: "var(--color-secondary)" }}>
-                        {["Staff member", "Action", "Guest", "Origin", "Day", "Time"].map((h) => (
-                          <th key={h} style={{ padding: "10px 16px", fontSize: "0.72rem", fontWeight: 700,
-                            textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--color-muted-foreground)",
-                            textAlign: "left", borderBottom: "1px solid var(--color-border)" }}>
-                            {h}
-                          </th>
-                        ))}
+                      <tr className="border-b border-border bg-secondary/60 text-muted-foreground">
+                        <th className="px-5 py-3 font-semibold">Registrar</th>
+                        <th className="px-5 py-3 font-semibold">Action</th>
+                        <th className="px-5 py-3 font-semibold">Attendee</th>
+                        <th className="px-5 py-3 font-semibold">Summary</th>
+                        <th className="px-5 py-3 font-semibold">Timestamp</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {edits.map((e, i) => {
-                        const who = e.edited_by ? (profiles[e.edited_by]?.display_name ?? "Unknown") : "Unknown";
-                        const isCreate = e.action === "create";
+                    <tbody className="divide-y divide-border">
+                      {edits.map((e) => {
+                        const who = e.edited_by
+                          ? profiles[e.edited_by]?.display_name ?? "Registrar"
+                          : "System";
                         return (
-                          <tr key={e.id} style={{
-                            borderBottom: "1px solid var(--color-border)",
-                            background: i % 2 === 0 ? "transparent" : "var(--color-secondary)/40",
-                            transition: "background 0.1s",
-                          }}>
-                            <td style={{ padding: "11px 16px" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <div style={{
-                                  width: "24px", height: "24px", borderRadius: "50%",
-                                  background: "linear-gradient(135deg, oklch(0.28 0.06 255), oklch(0.55 0.22 258))",
-                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                  color: "white", fontSize: "0.6rem", fontWeight: 700, flexShrink: 0,
-                                }}>
-                                  {who.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-                                </div>
-                                <span style={{ fontSize: "0.85rem", fontWeight: 500 }}>{who}</span>
-                              </div>
-                            </td>
-                            <td style={{ padding: "11px 16px" }}>
-                              <span style={{
-                                padding: "3px 10px", borderRadius: "9999px", fontSize: "0.72rem", fontWeight: 600,
-                                background: isCreate ? "oklch(0.52 0.19 150 / 0.1)" : "oklch(0.65 0.18 60 / 0.1)",
-                                color: isCreate ? "var(--color-success)" : "oklch(0.55 0.18 60)",
-                                border: `1px solid ${isCreate ? "oklch(0.52 0.19 150 / 0.2)" : "oklch(0.65 0.18 60 / 0.2)"}`,
-                              }}>
-                                {isCreate ? "✚ Registered" : "✎ Updated"}
+                          <tr key={e.id} className="hover:bg-secondary/30">
+                            <td className="px-5 py-3 font-semibold text-foreground">{who}</td>
+                            <td className="px-5 py-3">
+                              <span
+                                className={`inline-block rounded-full px-2.5 py-0.5 font-semibold capitalize ${
+                                  e.action === "create"
+                                    ? "bg-success/12 text-success"
+                                    : e.action === "check_in"
+                                      ? "bg-accent/12 text-accent"
+                                      : e.action === "delete"
+                                        ? "bg-destructive/12 text-destructive"
+                                        : "bg-secondary text-foreground"
+                                }`}
+                              >
+                                {e.action.replace("_", " ")}
                               </span>
                             </td>
-                            <td style={{ padding: "11px 16px" }}>
+                            <td className="px-5 py-3">
                               {e.guest ? (
-                                <Link to="/guests/$id" params={{ id: e.guest.id }}
-                                  style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--color-accent)",
-                                    textDecoration: "none" }}
-                                  onMouseEnter={(el) => (el.currentTarget.style.textDecoration = "underline")}
-                                  onMouseLeave={(el) => (el.currentTarget.style.textDecoration = "none")}>
-                                  {e.guest.first_name} {e.guest.last_name}
+                                <Link
+                                  to="/guests/$id"
+                                  params={{ id: e.guest.id }}
+                                  className="font-semibold text-accent no-underline hover:underline"
+                                >
+                                  {formatFullName(e.guest)} ({e.guest.reg_code})
                                 </Link>
                               ) : (
-                                <span style={{ fontSize: "0.85rem", color: "var(--color-muted-foreground)" }}>—</span>
-                              )}
-                            </td>
-                            <td style={{ padding: "11px 16px", fontSize: "0.82rem", color: "var(--color-muted-foreground)" }}>
-                              {e.guest?.origin ?? "—"}
-                            </td>
-                            <td style={{ padding: "11px 16px" }}>
-                              {e.guest?.day ? (
-                                <span style={{
-                                  width: "22px", height: "22px", borderRadius: "6px", display: "inline-flex",
-                                  alignItems: "center", justifyContent: "center",
-                                  background: "oklch(0.55 0.22 258 / 0.1)", color: "var(--color-accent)",
-                                  fontSize: "0.75rem", fontWeight: 700,
-                                }}>
-                                  {e.guest.day}
+                                <span className="text-muted-foreground">
+                                  {(e.changes as any)?.deleted_guest || "—"}
                                 </span>
-                              ) : (
-                                <span style={{ color: "var(--color-muted-foreground)", fontSize: "0.82rem" }}>—</span>
                               )}
                             </td>
-                            <td style={{ padding: "11px 16px" }}>
-                              <div style={{ fontSize: "0.78rem", color: "var(--color-muted-foreground)" }}>
-                                {formatDistanceToNow(new Date(e.edited_at), { addSuffix: true })}
-                              </div>
-                              <div style={{ fontSize: "0.7rem", color: "var(--color-muted-foreground)", opacity: 0.7 }}>
-                                {format(new Date(e.edited_at), "MMM d, HH:mm")}
-                              </div>
+                            <td className="max-w-xs truncate px-5 py-3 font-mono-code text-muted-foreground">
+                              {JSON.stringify(e.changes)}
+                            </td>
+                            <td className="whitespace-nowrap px-5 py-3 text-muted-foreground">
+                              {format(new Date(e.edited_at), "MMM d, HH:mm")} (
+                              {formatDistanceToNow(new Date(e.edited_at), { addSuffix: true })})
                             </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
-
-                  {/* Mobile list */}
-                  <div className="md:hidden" style={{ display: "flex", flexDirection: "column" }}>
-                    {edits.map((e) => {
-                      const who = e.edited_by ? (profiles[e.edited_by]?.display_name ?? "Unknown") : "Unknown";
-                      const isCreate = e.action === "create";
-                      return (
-                        <div key={e.id} style={{ padding: "14px 16px", borderBottom: "1px solid var(--color-border)" }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                              <div style={{
-                                width: "26px", height: "26px", borderRadius: "50%",
-                                background: "linear-gradient(135deg, oklch(0.28 0.06 255), oklch(0.55 0.22 258))",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                color: "white", fontSize: "0.62rem", fontWeight: 700, flexShrink: 0,
-                              }}>
-                                {who.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-                              </div>
-                              <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>{who}</span>
-                            </div>
-                            <span style={{ fontSize: "0.72rem", color: "var(--color-muted-foreground)" }}>
-                              {formatDistanceToNow(new Date(e.edited_at), { addSuffix: true })}
-                            </span>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingLeft: "34px" }}>
-                            <span style={{
-                              padding: "2px 8px", borderRadius: "9999px", fontSize: "0.7rem", fontWeight: 600,
-                              background: isCreate ? "oklch(0.52 0.19 150 / 0.1)" : "oklch(0.65 0.18 60 / 0.1)",
-                              color: isCreate ? "var(--color-success)" : "oklch(0.55 0.18 60)",
-                            }}>
-                              {isCreate ? "Registered" : "Updated"}
-                            </span>
-                            {e.guest && (
-                              <Link to="/guests/$id" params={{ id: e.guest.id }}
-                                style={{ fontSize: "0.82rem", color: "var(--color-accent)", textDecoration: "none", fontWeight: 500 }}>
-                                {e.guest.first_name} {e.guest.last_name}
-                              </Link>
-                            )}
-                            {e.guest?.day && (
-                              <span style={{ fontSize: "0.75rem", color: "var(--color-muted-foreground)" }}>· Day {e.guest.day}</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Staff tab */}
-          {activeTab === "staff" && (
-            <div className="fade-in space-y-4">
-              <div className="surface-card" style={{ padding: "20px" }}>
-                <h2 style={{ marginBottom: "4px" }}>Staff Leaderboard</h2>
-                <p style={{ fontSize: "0.82rem", color: "var(--color-muted-foreground)", marginBottom: "20px" }}>
-                  Guest registrations and updates per staff member
-                </p>
+          {/* TAB 4: REGISTRAR TEAM */}
+          {activeTab === "team" && (
+            <div className="fade-in surface-card p-6">
+              <h2 className="mb-1 text-base font-bold text-foreground">Registrar & usher activity</h2>
+              <p className="mb-5 text-xs text-muted-foreground">
+                Registrations, gate check-ins, and record updates handled per team member.
+              </p>
 
-                {staffList.length === 0 ? (
-                  <p style={{ color: "var(--color-muted-foreground)", fontSize: "0.85rem" }}>No staff activity yet.</p>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    {staffList.map(([id, s], i) => {
-                      const total = s.creates + s.updates;
-                      const pct = staffList[0] ? (total / (staffList[0][1].creates + staffList[0][1].updates)) * 100 : 100;
-                      return (
-                        <div key={id} style={{ padding: "14px 16px", borderRadius: "12px", background: "var(--color-secondary)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-                            <div style={{
-                              width: "32px", height: "32px", borderRadius: "50%", flexShrink: 0,
-                              background: i === 0
-                                ? "linear-gradient(135deg, oklch(0.7 0.15 60), oklch(0.65 0.18 40))"
-                                : "linear-gradient(135deg, oklch(0.28 0.06 255), oklch(0.55 0.22 258))",
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              color: "white", fontSize: "0.75rem", fontWeight: 700,
-                            }}>
-                              {s.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "1px",
-                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {s.name}
-                                {i === 0 && <span style={{ marginLeft: "6px", fontSize: "0.7rem" }}>🏆</span>}
+              {staffStats.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No staff actions recorded yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {staffStats.map(([id, s], idx) => {
+                    const totalActions = s.creates + s.checkIns + s.updates;
+                    const topTotal =
+                      staffStats[0][1].creates +
+                      staffStats[0][1].checkIns +
+                      staffStats[0][1].updates;
+                    const pct = topTotal > 0 ? Math.round((totalActions / topTotal) * 100) : 100;
+
+                    return (
+                      <div
+                        key={id}
+                        className="rounded-xl border border-border bg-secondary/40 p-4"
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary font-mono-code text-xs font-bold text-primary-foreground">
+                              {s.name.slice(0, 2).toUpperCase()}
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                                <span>{s.name}</span>
+                                {idx === 0 && (
+                                  <Medal size={15} className="text-warm" weight="fill" aria-hidden="true" />
+                                )}
                               </div>
-                              <div style={{ fontSize: "0.75rem", color: "var(--color-muted-foreground)" }}>
-                                {s.creates} registered · {s.updates} updated · {total} total
+                              <div className="text-xs text-muted-foreground">
+                                {s.creates} registered · {s.checkIns} gate check-ins · {s.updates} edits
                               </div>
-                            </div>
-                            <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--color-accent)", flexShrink: 0 }}>
-                              {total}
                             </div>
                           </div>
-                          {/* Progress bar */}
-                          <div style={{ height: "4px", borderRadius: "9999px", background: "var(--color-border)", overflow: "hidden" }}>
-                            <div style={{
-                              height: "100%", width: `${pct}%`, borderRadius: "9999px",
-                              background: i === 0
-                                ? "linear-gradient(90deg, oklch(0.7 0.15 60), oklch(0.65 0.18 40))"
-                                : "linear-gradient(90deg, oklch(0.28 0.06 255), oklch(0.55 0.22 258))",
-                              transition: "width 0.5s ease",
-                            }} />
-                          </div>
+                          <span className="font-mono-code text-lg font-bold text-accent">
+                            {totalActions}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Login credentials card */}
-              <div className="surface-card" style={{
-                padding: "20px",
-                borderColor: "oklch(0.55 0.22 258 / 0.25)",
-                background: "oklch(0.55 0.22 258 / 0.03)",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                  </svg>
-                  <h2 style={{ margin: 0 }}>Admin Access</h2>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-border">
+                          <div
+                            className="h-full rounded-full bg-primary"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <p style={{ fontSize: "0.82rem", color: "var(--color-muted-foreground)", lineHeight: 1.6, marginBottom: "14px" }}>
-                  The admin panel is visible to <strong>all authenticated staff members</strong>. Access is granted upon sign-up — no separate credentials needed.
-                </p>
-                <div style={{
-                  padding: "12px 14px", borderRadius: "10px",
-                  background: "var(--color-secondary)", fontSize: "0.82rem", lineHeight: 1.7,
-                }}>
-                  <strong>How to access this panel:</strong><br/>
-                  1. Go to <code style={{ background: "var(--color-muted)", padding: "1px 5px", borderRadius: "4px" }}>/auth</code> on any device<br/>
-                  2. Click <strong>"Create account"</strong> and fill in your details<br/>
-                  3. Sign in with your credentials<br/>
-                  4. Tap <strong>Admin</strong> in the navigation
-                </div>
-              </div>
+              )}
             </div>
           )}
         </>

@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedRegisterRouteImport } from './routes/_authenticated/register'
 import { Route as AuthenticatedGuestsRouteImport } from './routes/_authenticated/guests'
+import { Route as AuthenticatedCheckinRouteImport } from './routes/_authenticated/checkin'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as ApiStorageSplatRouteImport } from './routes/api.storage.$'
 import { Route as AuthenticatedGuestsIdRouteImport } from './routes/_authenticated/guests.$id'
@@ -42,6 +43,11 @@ const AuthenticatedGuestsRoute = AuthenticatedGuestsRouteImport.update({
   path: '/guests',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCheckinRoute = AuthenticatedCheckinRouteImport.update({
+  id: '/checkin',
+  path: '/checkin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -62,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/checkin': typeof AuthenticatedCheckinRoute
   '/guests': typeof AuthenticatedGuestsRouteWithChildren
   '/register': typeof AuthenticatedRegisterRoute
   '/guests/$id': typeof AuthenticatedGuestsIdRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/checkin': typeof AuthenticatedCheckinRoute
   '/guests': typeof AuthenticatedGuestsRouteWithChildren
   '/register': typeof AuthenticatedRegisterRoute
   '/': typeof AuthenticatedIndexRoute
@@ -81,6 +89,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/checkin': typeof AuthenticatedCheckinRoute
   '/_authenticated/guests': typeof AuthenticatedGuestsRouteWithChildren
   '/_authenticated/register': typeof AuthenticatedRegisterRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -93,6 +102,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/admin'
+    | '/checkin'
     | '/guests'
     | '/register'
     | '/guests/$id'
@@ -101,6 +111,7 @@ export interface FileRouteTypes {
   to:
     | '/auth'
     | '/admin'
+    | '/checkin'
     | '/guests'
     | '/register'
     | '/'
@@ -111,6 +122,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/admin'
+    | '/_authenticated/checkin'
     | '/_authenticated/guests'
     | '/_authenticated/register'
     | '/_authenticated/'
@@ -161,6 +173,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGuestsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/checkin': {
+      id: '/_authenticated/checkin'
+      path: '/checkin'
+      fullPath: '/checkin'
+      preLoaderRoute: typeof AuthenticatedCheckinRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -198,6 +217,7 @@ const AuthenticatedGuestsRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedCheckinRoute: typeof AuthenticatedCheckinRoute
   AuthenticatedGuestsRoute: typeof AuthenticatedGuestsRouteWithChildren
   AuthenticatedRegisterRoute: typeof AuthenticatedRegisterRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -205,6 +225,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedCheckinRoute: AuthenticatedCheckinRoute,
   AuthenticatedGuestsRoute: AuthenticatedGuestsRouteWithChildren,
   AuthenticatedRegisterRoute: AuthenticatedRegisterRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,

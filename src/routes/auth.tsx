@@ -2,49 +2,40 @@ import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import {
+  ArrowRight,
+  Campfire,
+  Church,
+  Eye,
+  EyeSlash,
+  IdentificationBadge,
+  QrCode,
+  UsersThree,
+} from "@phosphor-icons/react";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
-    meta: [{ title: "Sign in — Inspired for Change" }, { name: "description", content: "Staff sign in for guest registration." }],
+    meta: [
+      { title: "Registrar Sign in — Inspired for Change" },
+      { name: "description", content: "Sanctuary & church event registration desk sign in." },
+    ],
   }),
   component: AuthPage,
 });
 
 const signInSchema = z.object({
-  email: z.string().trim().email("Invalid email address").max(255),
+  email: z.string().trim().email("Enter a valid email address").max(255),
   password: z.string().min(6, "Password must be at least 6 characters").max(72),
 });
 
 const signUpSchema = signInSchema.extend({
-  displayName: z.string().trim().min(2, "Name must be at least 2 characters").max(80),
+  displayName: z.string().trim().min(2, "Full name must be at least 2 characters").max(80),
 });
-
-function EyeIcon({ open }: { open: boolean }) {
-  return open ? (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-      <circle cx="12" cy="12" r="3"/>
-    </svg>
-  ) : (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-      <line x1="1" y1="1" x2="23" y2="23"/>
-    </svg>
-  );
-}
-
-function SparkleIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
-    </svg>
-  );
-}
 
 function AuthPage() {
   const navigate = useNavigate();
   const router = useRouter();
-  const [mode, setMode] = useState<"signin" | "signup">("signup");
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -72,7 +63,7 @@ function AuthPage() {
           setLoading(false);
           return;
         }
-        const { error: err } = await supabase.auth.signUp({
+        const { data, error: err } = await supabase.auth.signUp({
           email: parsed.data.email,
           password: parsed.data.password,
           options: {
@@ -80,10 +71,14 @@ function AuthPage() {
             data: { display_name: parsed.data.displayName },
           },
         });
-        if (err) throw err;
-        setSuccess("Account created! Check your email to confirm, then sign in.");
+        if (err) throw new Error(err.message);
+        if (data?.session) {
+          await router.invalidate();
+          navigate({ to: "/", replace: true });
+          return;
+        }
+        setSuccess("Staff account created. You can now sign in below.");
         setMode("signin");
-        setEmail(parsed.data.email);
         setPassword("");
       } else {
         const parsed = signInSchema.safeParse({ email, password });
@@ -93,277 +88,205 @@ function AuthPage() {
           return;
         }
         const { error: err } = await supabase.auth.signInWithPassword(parsed.data);
-        if (err) throw err;
+        if (err) throw new Error(err.message);
         await router.invalidate();
         navigate({ to: "/", replace: true });
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(err instanceof Error ? err.message : "Authentication failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* Left panel — branding */}
-      <div
-        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden"
-        style={{
-          background: "linear-gradient(145deg, oklch(0.28 0.06 255) 0%, oklch(0.45 0.2 268) 50%, oklch(0.55 0.22 258) 100%)",
-        }}
-      >
-        {/* Decorative blobs */}
-        <div style={{
-          position: "absolute", top: "-80px", right: "-80px", width: "320px", height: "320px",
-          borderRadius: "50%", background: "oklch(1 0 0 / 0.06)", filter: "blur(60px)",
-        }} />
-        <div style={{
-          position: "absolute", bottom: "-60px", left: "-60px", width: "280px", height: "280px",
-          borderRadius: "50%", background: "oklch(1 0 0 / 0.08)", filter: "blur(50px)",
-        }} />
-
-        <div className="relative">
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "48px" }}>
-            <div style={{
-              width: "36px", height: "36px", borderRadius: "10px",
-              background: "oklch(1 0 0 / 0.15)", display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <SparkleIcon />
+    <div className="grid min-h-[100dvh] grid-cols-1 bg-background lg:grid-cols-12">
+      {/* Left Architectural Sanctuary Editorial Panel */}
+      <aside className="hidden flex-col justify-between bg-primary p-12 text-primary-foreground lg:col-span-5 lg:flex">
+        <div className="space-y-10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-foreground/14">
+              <Church size={22} weight="duotone" aria-hidden="true" />
             </div>
-            <span style={{ color: "white", fontWeight: 600, fontSize: "1.1rem", letterSpacing: "-0.02em" }}>
-              Inspired for Change
-            </span>
+            <div>
+              <span className="block text-base font-bold tracking-tight">Inspired for Change</span>
+              <span className="block text-xs opacity-75">Sanctuary & Church Event Operations</span>
+            </div>
           </div>
-          <h2 style={{ color: "white", fontSize: "clamp(2rem, 4vw, 2.8rem)", fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1.15, marginBottom: "16px" }}>
-            Guest Registration<br />Made Simple
-          </h2>
-          <p style={{ color: "oklch(1 0 0 / 0.7)", fontSize: "1rem", lineHeight: 1.6, maxWidth: "360px" }}>
-            Register and track event guests across multiple days with real-time collaboration for your entire team.
-          </p>
+
+          <div className="space-y-4">
+            <h1 className="max-w-[16ch] text-4xl leading-[1.08] font-extrabold tracking-tight">
+              Orderly hospitality for every gathering.
+            </h1>
+            <p className="max-w-[44ch] text-sm leading-relaxed opacity-80">
+              Manage conferences, youth camps, gospel crusades, and multi-day sanctuary check-ins with canonical UUID passes and household-friendly registration.
+            </p>
+          </div>
         </div>
 
-        <div style={{ position: "relative" }}>
+        <div className="space-y-3.5 border-t border-primary-foreground/15 pt-8 text-xs">
           {[
-            { icon: "✓", label: "Real-time guest tracking" },
-            { icon: "✓", label: "Multi-device staff access" },
-            { icon: "✓", label: "Instant duplicate detection" },
-            { icon: "✓", label: "CSV export & print reports" },
-          ].map((item, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-              <div style={{
-                width: "22px", height: "22px", borderRadius: "6px",
-                background: "oklch(1 0 0 / 0.15)", display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "12px", color: "white", flexShrink: 0,
-              }}>
-                {item.icon}
-              </div>
-              <span style={{ color: "oklch(1 0 0 / 0.8)", fontSize: "0.9rem" }}>{item.label}</span>
+            {
+              Icon: IdentificationBadge,
+              text: "Canonical UUID v4 records & printable QR badge passes (no phone-as-ID blocks)",
+            },
+            {
+              Icon: Campfire,
+              text: "Gender-aware dormitory allocation & multi-day session attendance",
+            },
+            {
+              Icon: UsersThree,
+              text: "Shared family phone linking for spouses, children, and parish delegations",
+            },
+            {
+              Icon: QrCode,
+              text: "Instant gate check-in desk & live pastoral follow-up telemetry",
+            },
+          ].map(({ Icon, text }) => (
+            <div key={text} className="flex items-center gap-3 opacity-90">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/12">
+                <Icon size={15} aria-hidden="true" />
+              </span>
+              <span>{text}</span>
             </div>
           ))}
         </div>
-      </div>
+      </aside>
 
-      {/* Right panel — form */}
-      <div className="flex-1 flex flex-col items-center justify-center px-5 py-10 sm:px-8 min-h-screen lg:min-h-0">
-        {/* Mobile logo */}
-        <div className="lg:hidden mb-8 text-center slide-up">
-          <div style={{
-            width: "52px", height: "52px", borderRadius: "16px", margin: "0 auto 12px",
-            background: "linear-gradient(135deg, oklch(0.28 0.06 255), oklch(0.55 0.22 258))",
-            display: "flex", alignItems: "center", justifyContent: "center", color: "white",
-          }}>
-            <SparkleIcon />
+      {/* Right Registrar Sign-in Workspace */}
+      <div className="flex flex-col items-center justify-center px-5 py-12 sm:px-8 lg:col-span-7">
+        <div className="w-full max-w-[420px] space-y-6">
+          {/* Mobile Header */}
+          <div className="flex items-center gap-3 lg:hidden">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <Church size={21} weight="duotone" aria-hidden="true" />
+            </div>
+            <div>
+              <div className="text-base font-bold text-foreground">Inspired for Change</div>
+              <div className="text-xs text-muted-foreground">Church Events & Sanctuary Registry</div>
+            </div>
           </div>
-          <h1 style={{ fontSize: "1.4rem", fontWeight: 700, letterSpacing: "-0.03em", marginBottom: "4px" }}>
-            Inspired for Change
-          </h1>
-          <p style={{ fontSize: "0.85rem", color: "var(--color-muted-foreground)" }}>
-            Guest registration system
-          </p>
-        </div>
 
-        <div className="w-full max-w-[420px] slide-up">
-          {/* Tab switcher */}
-          <div style={{
-            display: "flex", background: "var(--color-secondary)", borderRadius: "14px",
-            padding: "4px", marginBottom: "24px",
-          }}>
-            {(["signup", "signin"] as const).map((m) => (
+          {/* Mode Switcher */}
+          <div className="grid grid-cols-2 rounded-2xl border border-border bg-secondary p-1">
+            {(["signin", "signup"] as const).map((m) => (
               <button
                 key={m}
                 id={`auth-tab-${m}`}
                 type="button"
-                onClick={() => { setMode(m); setError(""); setSuccess(""); }}
-                style={{
-                  flex: 1, padding: "10px 16px", borderRadius: "10px", fontSize: "0.875rem",
-                  fontWeight: 500, border: "none", cursor: "pointer", transition: "all 0.2s ease",
-                  background: mode === m ? "var(--color-card)" : "transparent",
-                  color: mode === m ? "var(--color-foreground)" : "var(--color-muted-foreground)",
-                  boxShadow: mode === m ? "var(--shadow-soft)" : "none",
+                onClick={() => {
+                  setMode(m);
+                  setError("");
+                  setSuccess("");
                 }}
+                className={`cursor-pointer rounded-xl py-2.5 text-xs font-semibold ${
+                  mode === m
+                    ? "bg-card text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
-                {m === "signup" ? "Create account" : "Sign in"}
+                {m === "signin" ? "Registrar sign in" : "New staff account"}
               </button>
             ))}
           </div>
 
-          <div style={{ marginBottom: "20px" }}>
-            <h2 style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.03em", marginBottom: "4px" }}>
-              {mode === "signup" ? "Join the team" : "Welcome back"}
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">
+              {mode === "signin" ? "Welcome back to the desk" : "Create your registrar profile"}
             </h2>
-            <p style={{ fontSize: "0.875rem", color: "var(--color-muted-foreground)" }}>
-              {mode === "signup"
-                ? "Create your staff account to start registering guests."
-                : "Sign in to your staff account to continue."}
+            <p className="mt-1 text-xs text-muted-foreground">
+              {mode === "signin"
+                ? "Sign in to issue attendee passes, manage dormitories, and verify arrivals."
+                : "Onboard as a church registrar, usher, or camp coordinator."}
             </p>
           </div>
 
-          <form onSubmit={onSubmit} className="surface-elevated p-6 sm:p-8 space-y-4">
-            {mode === "signup" && (
-              <div className="fade-in">
-                <label htmlFor="auth-display-name" style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "6px", color: "var(--color-foreground)" }}>
-                  Full name
+          <div className="bezel-shell">
+            <form onSubmit={onSubmit} className="bezel-core space-y-4 p-6 sm:p-7">
+              {mode === "signup" && (
+                <div>
+                  <label htmlFor="auth-display-name" className="mb-1.5 block text-xs font-semibold text-foreground">
+                    Full name
+                  </label>
+                  <input
+                    id="auth-display-name"
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="e.g. Pastor Daniel Mwakasege"
+                    required
+                    autoComplete="name"
+                    className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="auth-email" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Email address
                 </label>
                 <input
-                  id="auth-display-name"
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  style={{
-                    width: "100%", padding: "11px 14px", borderRadius: "12px",
-                    background: "var(--color-input)", border: "1.5px solid var(--color-border)",
-                    fontSize: "0.9rem", color: "var(--color-foreground)",
-                    transition: "border-color 0.15s ease, box-shadow 0.15s ease",
-                  }}
-                  placeholder="Jane Doe"
+                  id="auth-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="registrar@church.org"
                   required
-                  autoComplete="name"
+                  autoComplete="email"
+                  className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground"
                 />
               </div>
-            )}
 
-            <div>
-              <label htmlFor="auth-email" style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "6px" }}>
-                Email address
-              </label>
-              <input
-                id="auth-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{
-                  width: "100%", padding: "11px 14px", borderRadius: "12px",
-                  background: "var(--color-input)", border: "1.5px solid var(--color-border)",
-                  fontSize: "0.9rem", color: "var(--color-foreground)",
-                  transition: "border-color 0.15s ease, box-shadow 0.15s ease",
-                }}
-                placeholder="you@example.com"
-                required
-                autoComplete="email"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="auth-password" style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "6px" }}>
-                Password
-              </label>
-              <div style={{ position: "relative" }}>
-                <input
-                  id="auth-password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={{
-                    width: "100%", padding: "11px 44px 11px 14px", borderRadius: "12px",
-                    background: "var(--color-input)", border: "1.5px solid var(--color-border)",
-                    fontSize: "0.9rem", color: "var(--color-foreground)",
-                    transition: "border-color 0.15s ease, box-shadow 0.15s ease",
-                  }}
-                  placeholder="••••••••"
-                  required
-                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                />
-                <button
-                  type="button"
-                  id="auth-toggle-password"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)",
-                    background: "none", border: "none", cursor: "pointer", padding: "4px",
-                    color: "var(--color-muted-foreground)", display: "flex", alignItems: "center",
-                  }}
-                >
-                  <EyeIcon open={showPassword} />
-                </button>
+              <div>
+                <label htmlFor="auth-password" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="auth-password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    required
+                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                    className="w-full rounded-xl border border-border bg-input py-2.5 pr-11 pl-3.5 text-sm text-foreground"
+                  />
+                  <button
+                    type="button"
+                    id="auth-toggle-password"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <Eye size={17} /> : <EyeSlash size={17} />}
+                  </button>
+                </div>
               </div>
-              {mode === "signup" && (
-                <p style={{ fontSize: "0.75rem", color: "var(--color-muted-foreground)", marginTop: "5px" }}>
-                  At least 6 characters
-                </p>
+
+              {error && (
+                <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs font-medium text-destructive">
+                  {error}
+                </div>
               )}
-            </div>
 
-            {error && (
-              <div className="scale-in" style={{
-                fontSize: "0.85rem", color: "var(--color-destructive)",
-                background: "oklch(0.58 0.22 27 / 0.08)", padding: "10px 14px",
-                borderRadius: "10px", border: "1px solid oklch(0.58 0.22 27 / 0.2)",
-              }}>
-                {error}
-              </div>
-            )}
+              {success && (
+                <div className="rounded-xl border border-success/30 bg-success/10 px-3.5 py-2.5 text-xs font-medium text-success">
+                  {success}
+                </div>
+              )}
 
-            {success && (
-              <div className="scale-in" style={{
-                fontSize: "0.85rem", color: "var(--color-success)",
-                background: "oklch(0.62 0.18 150 / 0.08)", padding: "10px 14px",
-                borderRadius: "10px", border: "1px solid oklch(0.62 0.18 150 / 0.2)",
-              }}>
-                {success}
-              </div>
-            )}
-
-            <button
-              id="auth-submit-btn"
-              type="submit"
-              disabled={loading}
-              style={{
-                width: "100%", padding: "13px 20px", borderRadius: "12px", border: "none",
-                background: loading ? "var(--color-muted)" : "linear-gradient(135deg, oklch(0.28 0.06 255), oklch(0.45 0.2 268))",
-                color: loading ? "var(--color-muted-foreground)" : "white",
-                fontWeight: 600, fontSize: "0.9rem", cursor: loading ? "not-allowed" : "pointer",
-                boxShadow: loading ? "none" : "0 4px 14px oklch(0.45 0.2 268 / 0.3)",
-                transition: "all 0.2s ease",
-              }}
-            >
-              {loading ? "Please wait…" : mode === "signin" ? "Sign in →" : "Create account →"}
-            </button>
-          </form>
-
-          <p style={{ textAlign: "center", marginTop: "20px", fontSize: "0.8rem", color: "var(--color-muted-foreground)" }}>
-            {mode === "signup" ? (
-              <>Already have an account?{" "}
-                <button id="auth-switch-to-signin" onClick={() => { setMode("signin"); setError(""); setSuccess(""); }}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 600,
-                    color: "var(--color-accent)", textDecoration: "underline", fontSize: "inherit" }}>
-                  Sign in
-                </button>
-              </>
-            ) : (
-              <>New staff member?{" "}
-                <button id="auth-switch-to-signup" onClick={() => { setMode("signup"); setError(""); setSuccess(""); }}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 600,
-                    color: "var(--color-accent)", textDecoration: "underline", fontSize: "inherit" }}>
-                  Create an account
-                </button>
-              </>
-            )}
-          </p>
-
-          <p style={{ textAlign: "center", marginTop: "24px", fontSize: "0.72rem", color: "var(--color-muted-foreground)" }}>
-            Staff only · Contact your admin if you need access
-          </p>
+              <button
+                id="auth-submit-btn"
+                type="submit"
+                disabled={loading}
+                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:opacity-95 disabled:opacity-50"
+              >
+                <span>{loading ? "Authenticating…" : mode === "signin" ? "Sign in to workspace" : "Create staff account"}</span>
+                <ArrowRight size={16} weight="bold" aria-hidden="true" />
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>

@@ -1,111 +1,149 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useMatch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEvents } from "@/hooks/use-events";
 import { useAuth } from "@/hooks/use-auth";
-import type { Guest } from "@/lib/types";
+import {
+  AGE_GROUP_LABELS,
+  GENDER_LABELS,
+  MINISTRY_ROLE_LABELS,
+  formatFullName,
+  isCheckedInForDay,
+  type Gender,
+  type Guest,
+  type GuestStatus,
+} from "@/lib/types";
 import { exportGuestsToCSV } from "@/lib/csv-export";
 import { toast } from "sonner";
+import {
+  Campfire,
+  CheckCircle,
+  Church,
+  DownloadSimple,
+  MagnifyingGlass,
+  PencilSimple,
+  Printer,
+  SunHorizon,
+  Trash,
+  UserPlus,
+  Users,
+} from "@phosphor-icons/react";
 
 export const Route = createFileRoute("/_authenticated/guests")({
-  head: () => ({ meta: [{ title: "Guests — Inspired for Change" }] }),
-  component: GuestsPage,
+  head: () => ({ meta: [{ title: "Attendee Directory — Inspired for Change" }] }),
+  component: GuestsRouteLayout,
 });
 
-type Filter = "all" | "camping" | "not_camping";
-type Sort = "newest" | "name";
+function GuestsRouteLayout() {
+  const detailMatch = useMatch({ from: "/_authenticated/guests/$id", shouldThrow: false });
+  if (detailMatch) {
+    return <Outlet />;
+  }
+  return <GuestsDirectory />;
+}
 
-function GuestsPage() {
+type AccomFilter = "all" | "camping" | "not_camping";
+type GenderFilter = "all" | "male" | "female";
+type SortOrder = "newest" | "name" | "code";
+
+function GuestsDirectory() {
   const { selected } = useEvents();
   const { user } = useAuth();
   const [guests, setGuests] = useState<Guest[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
-  const [sort, setSort] = useState<Sort>("newest");
+  const [accomFilter, setAccomFilter] = useState<AccomFilter>("all");
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>("all");
+  const [dayFilter, setDayFilter] = useState<number | "all">("all");
+  const [sort, setSort] = useState<SortOrder>("newest");
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Guest>>({});
+  const [confirmDeleteGuest, setConfirmDeleteGuest] = useState<Guest | null>(null);
+
+  const loadGuests = async () => {
+    if (!selected) return;
+    const { data } = await supabase
+      .from("guests")
+      .select("*")
+      .eq("event_id", selected.id)
+      .order("created_at", { ascending: false });
+    setGuests((data as unknown as Guest[]) ?? []);
+    setLoading(false);
+  };
 
   useEffect(() => {
     if (!selected) return;
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      const { data } = await supabase
-        .from("guests")
-        .select("*")
-        .eq("event_id", selected.id)
-        .order("created_at", { ascending: false });
-      if (cancelled) return;
-      setGuests((data as Guest[]) ?? []);
-      setLoading(false);
-    };
-    load();
+    setLoading(true);
+    loadGuests();
+
     const channel = supabase
       .channel("guests-" + selected.id)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "guests" }, (payload) => {
-        const newGuest = payload.new as Guest;
-        if (newGuest.event_id === selected.id) {
-          toast.success(`New guest registered: ${newGuest.first_name} ${newGuest.last_name}`);
-          load();
-        }
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "guests" }, (payload) => {
-        const updated = payload.new as Guest;
-        if (updated.event_id === selected.id) {
-          toast.info(`Guest updated: ${updated.first_name} ${updated.last_name}`);
-          load();
-        }
-      })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "guests" }, (payload) => {
-        const deleted = payload.old as Guest;
-        if (deleted.event_id === selected.id) {
-          toast.warning(`Guest removed: ${deleted.first_name} ${deleted.last_name}`);
-          load();
-        }
+      .on("postgres_changes", { event: "*", schema: "public", table: "guests" }, () => {
+        loadGuests();
       })
       .subscribe();
+
     return () => {
-      cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [selected]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
+
+  const totalDays = selected?.total_days || 3;
+  const dayList = Array.from({ length: totalDays }, (_, i) => i + 1);
 
   const filtered = useMemo(() => {
     let rows = guests;
-    if (filter !== "all") rows = rows.filter((g) => g.status === filter);
+    if (accomFilter !== "all") rows = rows.filter((g) => g.status === accomFilter);
+    if (genderFilter !== "all") rows = rows.filter((g) => g.gender === genderFilter);
+    if (dayFilter !== "all") {
+      rows = rows.filter((g) => g.days_registered?.includes(dayFilter) || g.day === dayFilter);
+    }
+
     const q = query.trim().toLowerCase();
     if (q) {
       rows = rows.filter((g) =>
-        [g.first_name, g.middle_name, g.last_name, g.origin, g.phone]
+        [
+          g.reg_code,
+          g.id,
+          g.first_name,
+          g.middle_name,
+          g.last_name,
+          formatFullName(g),
+          g.origin,
+          g.church_name,
+          g.phone,
+          g.accommodation_zone,
+        ]
           .filter(Boolean)
-          .some((v) => (v as string).toLowerCase().includes(q)),
+          .some((v) => String(v).toLowerCase().includes(q)),
       );
     }
+
     if (sort === "name") {
       rows = [...rows].sort((a, b) =>
         `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`),
       );
+    } else if (sort === "code") {
+      rows = [...rows].sort((a, b) => (a.reg_code || "").localeCompare(b.reg_code || ""));
     }
     return rows;
-  }, [guests, query, filter, sort]);
+  }, [guests, query, accomFilter, genderFilter, dayFilter, sort]);
 
-  const exportCsv = async () => {
+  const handleExportCsv = async () => {
     try {
       await exportGuestsToCSV(selected?.id);
+      toast.success("Attendee CSV downloaded");
     } catch {
-      alert("Failed to export CSV. Please try again.");
+      toast.error("Failed to export CSV. Please try again.");
     }
   };
 
   const startEdit = (guest: Guest) => {
     setEditingId(guest.id);
-    setEditForm(guest);
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditForm({});
+    setEditForm({ ...guest });
   };
 
   const saveEdit = async () => {
@@ -116,200 +154,402 @@ function GuestsPage() {
         first_name: editForm.first_name,
         middle_name: editForm.middle_name || null,
         last_name: editForm.last_name,
+        gender: editForm.gender,
         origin: editForm.origin,
-        phone: editForm.phone,
+        church_name: editForm.church_name || null,
+        phone: editForm.phone || "",
         status: editForm.status,
-        day: editForm.day,
         updated_by: user.id,
-      })
+      } as any)
       .eq("id", editingId);
 
-    if (err) { toast.error("Failed to update guest"); return; }
-    toast.success("Guest updated successfully");
+    if (err) {
+      toast.error("Failed to save changes");
+      return;
+    }
+    toast.success("Attendee updated");
     setEditingId(null);
     setEditForm({});
+    await loadGuests();
   };
 
-  const deleteGuest = async (guest: Guest) => {
-    if (!confirm(`Delete ${guest.first_name} ${guest.last_name}? This cannot be undone.`)) return;
-    const { error: err } = await supabase.from("guests").delete().eq("id", guest.id);
-    if (err) { toast.error("Failed to delete guest"); return; }
-    toast.success("Guest deleted");
+  const confirmDelete = async () => {
+    if (!confirmDeleteGuest) return;
+    const target = confirmDeleteGuest;
+    setConfirmDeleteGuest(null);
+    const { error: err } = await supabase.from("guests").delete().eq("id", target.id);
+    if (err) {
+      toast.error("Failed to remove attendee");
+      return;
+    }
+    toast.success(`Removed ${formatFullName(target)}`);
+    await loadGuests();
   };
 
-  const inputCls: React.CSSProperties = {
-    width: "100%", padding: "7px 10px", borderRadius: "8px",
-    background: "var(--color-input)", border: "1.5px solid var(--color-border)",
-    fontSize: "0.82rem", color: "var(--color-foreground)",
+  const quickToggleDayCheckIn = async (guest: Guest, dayNum: number) => {
+    if (!user) return;
+    const checked = isCheckedInForDay(guest, dayNum);
+    const nextCheckIns = { ...(guest.check_ins ?? {}) };
+    const nextDays = new Set<number>(guest.days_registered ?? [1]);
+    if (checked) {
+      delete nextCheckIns[String(dayNum)];
+    } else {
+      nextCheckIns[String(dayNum)] = new Date().toISOString();
+      nextDays.add(dayNum);
+    }
+
+    const { error } = await supabase
+      .from("guests")
+      .update({
+        check_ins: nextCheckIns as any,
+        days_registered: Array.from(nextDays).sort((a, b) => a - b),
+        updated_by: user.id,
+      } as any)
+      .eq("id", guest.id);
+
+    if (error) {
+      toast.error("Could not update check-in");
+      return;
+    }
+    await loadGuests();
   };
+
+  const maleCount = guests.filter((g) => g.gender === "male").length;
+  const femaleCount = guests.filter((g) => g.gender === "female").length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-      {/* Header */}
-      <div className="no-print slide-up" style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: "12px" }}>
+    <div className="space-y-5">
+      {/* Directory Header */}
+      <div className="no-print flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p style={{ fontSize: "0.8rem", color: "var(--color-muted-foreground)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            {selected?.name}
+          <p className="text-xs font-medium text-muted-foreground">
+            {selected?.name} · {guests.length} registered ({maleCount} male, {femaleCount} female)
           </p>
-          <h1 style={{ marginTop: "2px" }}>Guests</h1>
+          <h1 className="mt-1">Attendee directory</h1>
         </div>
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        <div className="flex flex-wrap items-center gap-2">
           <button
             id="export-csv-btn"
-            onClick={exportCsv}
-            style={{
-              padding: "9px 16px", borderRadius: "9999px", fontSize: "0.82rem",
-              background: "var(--color-secondary)", border: "1.5px solid var(--color-border)",
-              cursor: "pointer", fontWeight: 500, color: "var(--color-foreground)",
-            }}
+            type="button"
+            onClick={handleExportCsv}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-secondary"
           >
-            ↓ CSV
+            <DownloadSimple size={15} className="text-accent" aria-hidden="true" />
+            Export CSV
           </button>
           <button
             id="print-btn"
+            type="button"
             onClick={() => window.print()}
-            style={{
-              padding: "9px 16px", borderRadius: "9999px", fontSize: "0.82rem",
-              background: "linear-gradient(135deg, oklch(0.28 0.06 255), oklch(0.55 0.22 258))",
-              border: "none", cursor: "pointer", fontWeight: 600, color: "white",
-            }}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-secondary"
           >
-            🖨 Print
+            <Printer size={15} className="text-accent" aria-hidden="true" />
+            Print roster
           </button>
+          <Link
+            to="/register"
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground no-underline hover:opacity-95"
+          >
+            <UserPlus size={15} weight="bold" aria-hidden="true" />
+            Register attendee
+          </Link>
         </div>
       </div>
 
-      {/* Search & filters */}
-      <div className="no-print surface-card" style={{ padding: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
-        <input
-          id="guests-search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="🔍  Search by name, origin, or phone…"
-          style={{
-            width: "100%", padding: "10px 14px", borderRadius: "12px",
-            background: "var(--color-input)", border: "1.5px solid var(--color-border)",
-            fontSize: "0.88rem", color: "var(--color-foreground)",
-          }}
-        />
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          {/* Status filter pills */}
-          <div style={{ display: "flex", gap: "4px", background: "var(--color-secondary)", borderRadius: "10px", padding: "3px" }}>
-            {(["all", "camping", "not_camping"] as Filter[]).map((f) => (
+      {/* Multi-faceted Filter Bar */}
+      <div className="no-print surface-card space-y-3 p-4">
+        <div className="relative">
+          <MagnifyingGlass
+            size={17}
+            className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <input
+            id="guests-search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by badge ID (IFC-26-0001), UUID, name, church, city, dorm, or phone…"
+            aria-label="Search directory"
+            className="w-full rounded-xl border border-border bg-input py-2.5 pr-4 pl-10 text-sm text-foreground"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Gender Filter */}
+          <div className="flex rounded-xl bg-secondary p-1">
+            {(["all", "male", "female"] as GenderFilter[]).map((gf) => (
               <button
-                key={f}
-                id={`filter-${f}`}
-                onClick={() => setFilter(f)}
-                style={{
-                  padding: "6px 12px", borderRadius: "8px", fontSize: "0.78rem",
-                  border: "none", cursor: "pointer", fontWeight: filter === f ? 600 : 400,
-                  background: filter === f ? "var(--color-card)" : "transparent",
-                  color: filter === f ? "var(--color-foreground)" : "var(--color-muted-foreground)",
-                  boxShadow: filter === f ? "var(--shadow-soft)" : "none",
-                  transition: "all 0.15s ease", whiteSpace: "nowrap",
-                }}
+                key={gf}
+                type="button"
+                onClick={() => setGenderFilter(gf)}
+                className={`cursor-pointer rounded-lg px-3 py-1 text-xs font-medium capitalize ${
+                  genderFilter === gf
+                    ? "bg-card font-semibold text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
-                {f === "all" ? "All" : f === "camping" ? "⛺ Camping" : "☀️ Day visitors"}
+                {gf === "all" ? "All genders" : gf}
               </button>
             ))}
           </div>
+
+          {/* Accommodation Filter */}
+          <div className="flex rounded-xl bg-secondary p-1">
+            {(["all", "camping", "not_camping"] as AccomFilter[]).map((af) => (
+              <button
+                key={af}
+                id={`filter-${af}`}
+                type="button"
+                onClick={() => setAccomFilter(af)}
+                className={`cursor-pointer rounded-lg px-3 py-1 text-xs font-medium ${
+                  accomFilter === af
+                    ? "bg-card font-semibold text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {af === "all" ? "All lodging" : af === "camping" ? "Campers" : "Day commuters"}
+              </button>
+            ))}
+          </div>
+
+          {/* Day Filter */}
+          <select
+            aria-label="Filter by day"
+            value={dayFilter}
+            onChange={(e) => setDayFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
+            className="cursor-pointer rounded-xl border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-foreground"
+          >
+            <option value="all">All days</option>
+            {dayList.map((d) => (
+              <option key={d} value={d}>
+                Day {d}
+              </option>
+            ))}
+          </select>
+
           {/* Sort */}
           <select
             id="guests-sort"
+            aria-label="Sort order"
             value={sort}
-            onChange={(e) => setSort(e.target.value as Sort)}
-            style={{
-              padding: "6px 12px", borderRadius: "10px", fontSize: "0.78rem",
-              background: "var(--color-secondary)", border: "1.5px solid var(--color-border)",
-              cursor: "pointer", color: "var(--color-foreground)", fontWeight: 500,
-            }}
+            onChange={(e) => setSort(e.target.value as SortOrder)}
+            className="cursor-pointer rounded-xl border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-foreground"
           >
-            <option value="newest">Newest first</option>
-            <option value="name">A → Z</option>
+            <option value="newest">Newest registered</option>
+            <option value="code">Badge code</option>
+            <option value="name">Name (A–Z)</option>
           </select>
         </div>
       </div>
 
-      {/* Table — desktop */}
-      <div className="surface-card hidden md:block" style={{ overflow: "hidden" }}>
-        <div style={{
-          display: "grid", gridTemplateColumns: "3fr 2fr 2fr 60px 130px 110px",
-          padding: "10px 20px", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase",
-          letterSpacing: "0.07em", color: "var(--color-muted-foreground)",
-          borderBottom: "1px solid var(--color-border)", background: "var(--color-secondary)",
-        }}>
-          <div>Name</div><div>Origin</div><div>Phone</div><div>Day</div><div>Status</div><div style={{ textAlign: "right" }}>Actions</div>
+      {/* Desktop Roster Table */}
+      <div className="surface-card hidden overflow-hidden lg:block">
+        <div className="grid grid-cols-12 gap-3 border-b border-border bg-secondary/70 px-5 py-3 text-xs font-semibold text-muted-foreground">
+          <div className="col-span-3">Attendee & badge ID</div>
+          <div className="col-span-2">Demographics</div>
+          <div className="col-span-3">Church & contact</div>
+          <div className="col-span-2">Days & check-in</div>
+          <div className="col-span-1">Lodging</div>
+          <div className="no-print col-span-1 text-right">Actions</div>
         </div>
 
         {loading ? (
-          <div style={{ padding: "60px", textAlign: "center", color: "var(--color-muted-foreground)" }}>Loading…</div>
+          <div className="space-y-3 p-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-14 animate-pulse rounded-xl bg-secondary" />
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
-          <div style={{ padding: "60px", textAlign: "center", color: "var(--color-muted-foreground)" }}>No guests found.</div>
+          <div className="px-6 py-16 text-center">
+            <p className="text-sm font-semibold text-foreground">No attendees match your filters</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Adjust your search terms or register a new person for {selected?.name}.
+            </p>
+          </div>
         ) : (
-          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+          <ul className="divide-y divide-border">
             {filtered.map((g) => (
-              <li key={g.id} style={{ borderBottom: "1px solid var(--color-border)" }}>
+              <li key={g.id} className="px-5 py-3.5 hover:bg-secondary/35">
                 {editingId === g.id ? (
-                  <div style={{
-                    display: "grid", gridTemplateColumns: "3fr 2fr 2fr 60px 130px 110px",
-                    padding: "12px 20px", gap: "8px", alignItems: "center",
-                    background: "oklch(0.55 0.22 258 / 0.04)",
-                  }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <input value={editForm.first_name || ""} onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })} style={inputCls} placeholder="First name" />
-                      <input value={editForm.last_name || ""} onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })} style={inputCls} placeholder="Last name" />
+                  <div className="grid grid-cols-12 items-center gap-2.5">
+                    <div className="col-span-3 flex gap-1.5">
+                      <input
+                        value={editForm.first_name || ""}
+                        onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                        placeholder="First"
+                        className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs"
+                      />
+                      <input
+                        value={editForm.last_name || ""}
+                        onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                        placeholder="Last"
+                        className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs"
+                      />
                     </div>
-                    <input value={editForm.origin || ""} onChange={(e) => setEditForm({ ...editForm, origin: e.target.value })} style={inputCls} placeholder="Origin" />
-                    <input value={editForm.phone || ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={inputCls} placeholder="Phone" />
-                    <select value={editForm.day || ""} onChange={(e) => setEditForm({ ...editForm, day: e.target.value ? parseInt(e.target.value) : null })} style={inputCls}>
-                      <option value="">-</option>
-                      <option value="1">1</option>
-                      <option value="2">2</option>
-                      <option value="3">3</option>
-                    </select>
-                    <select value={editForm.status || "not_camping"} onChange={(e) => setEditForm({ ...editForm, status: e.target.value as "camping" | "not_camping" })} style={inputCls}>
-                      <option value="camping">Camping</option>
-                      <option value="not_camping">Not camping</option>
-                    </select>
-                    <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-                      <button onClick={saveEdit} style={{ padding: "6px 12px", borderRadius: "8px", fontSize: "0.78rem", fontWeight: 600, background: "var(--color-primary)", color: "var(--color-primary-foreground)", border: "none", cursor: "pointer" }}>Save</button>
-                      <button onClick={cancelEdit} style={{ padding: "6px 12px", borderRadius: "8px", fontSize: "0.78rem", background: "var(--color-secondary)", border: "none", cursor: "pointer" }}>Cancel</button>
+                    <div className="col-span-2">
+                      <select
+                        value={editForm.gender || "unspecified"}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, gender: e.target.value as Gender })
+                        }
+                        className="w-full rounded-lg border border-border bg-input px-2 py-1.5 text-xs"
+                      >
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="unspecified">Unspecified</option>
+                      </select>
+                    </div>
+                    <div className="col-span-3 flex gap-1.5">
+                      <input
+                        value={editForm.church_name || ""}
+                        onChange={(e) => setEditForm({ ...editForm, church_name: e.target.value })}
+                        placeholder="Church"
+                        className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs"
+                      />
+                      <input
+                        value={editForm.phone || ""}
+                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                        placeholder="Phone"
+                        className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 font-mono-code text-xs"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <input
+                        value={editForm.origin || ""}
+                        onChange={(e) => setEditForm({ ...editForm, origin: e.target.value })}
+                        placeholder="City / Region"
+                        className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <select
+                        value={editForm.status || "not_camping"}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, status: e.target.value as GuestStatus })
+                        }
+                        className="w-full rounded-lg border border-border bg-input px-1.5 py-1.5 text-xs"
+                      >
+                        <option value="not_camping">Day</option>
+                        <option value="camping">Camp</option>
+                      </select>
+                    </div>
+                    <div className="col-span-1 flex justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={saveEdit}
+                        className="cursor-pointer rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(null)}
+                        className="cursor-pointer rounded-lg bg-secondary px-2 py-1.5 text-xs"
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </div>
                 ) : (
-                  <div style={{
-                    display: "grid", gridTemplateColumns: "3fr 2fr 2fr 60px 130px 110px",
-                    padding: "13px 20px", gap: "8px", alignItems: "center",
-                    transition: "background 0.1s ease", cursor: "default",
-                  }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-secondary)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
-                    <Link to="/guests/$id" params={{ id: g.id }} style={{ fontWeight: 600, fontSize: "0.88rem", textDecoration: "none", color: "var(--color-foreground)", transition: "color 0.1s" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-accent)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-foreground)")}>
-                      {[g.first_name, g.middle_name, g.last_name].filter(Boolean).join(" ")}
-                    </Link>
-                    <div style={{ fontSize: "0.82rem", color: "var(--color-muted-foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.origin}</div>
-                    <div style={{ fontSize: "0.82rem", color: "var(--color-muted-foreground)", fontVariantNumeric: "tabular-nums" }}>{g.phone}</div>
-                    <div>
-                      {g.day ? (
-                        <span style={{ width: "24px", height: "24px", borderRadius: "6px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "oklch(0.55 0.22 258 / 0.1)", color: "var(--color-accent)", fontSize: "0.75rem", fontWeight: 700 }}>{g.day}</span>
-                      ) : <span style={{ color: "var(--color-muted-foreground)" }}>—</span>}
+                  <div className="grid grid-cols-12 items-center gap-3">
+                    <div className="col-span-3 min-w-0">
+                      <Link
+                        to="/guests/$id"
+                        params={{ id: g.id }}
+                        className="block truncate text-sm font-semibold text-foreground no-underline hover:text-accent"
+                      >
+                        {formatFullName(g)}
+                      </Link>
+                      <div className="mt-0.5 flex items-center gap-1.5 font-mono-code text-xs text-muted-foreground">
+                        <span className="font-medium text-accent">{g.reg_code}</span>
+                        <span>·</span>
+                        <span title={g.id}>{g.id.slice(0, 8)}</span>
+                      </div>
                     </div>
-                    <div>
-                      <span style={{
-                        fontSize: "0.72rem", padding: "3px 10px", borderRadius: "9999px", fontWeight: 600,
-                        background: g.status === "camping" ? "oklch(0.55 0.22 258 / 0.1)" : "var(--color-muted)",
-                        color: g.status === "camping" ? "var(--color-accent)" : "var(--color-muted-foreground)",
-                        border: `1px solid ${g.status === "camping" ? "oklch(0.55 0.22 258 / 0.2)" : "var(--color-border)"}`,
-                      }}>
-                        {g.status === "camping" ? "⛺ Camping" : "☀️ Day visitor"}
+
+                    <div className="col-span-2 text-xs">
+                      <span className="font-medium text-foreground">
+                        {GENDER_LABELS[g.gender] || "Not recorded"}
+                      </span>
+                      <span className="block text-muted-foreground">
+                        {MINISTRY_ROLE_LABELS[g.ministry_role] || AGE_GROUP_LABELS[g.age_group]}
                       </span>
                     </div>
-                    <div style={{ display: "flex", gap: "5px", justifyContent: "flex-end" }} className="no-print">
-                      <button onClick={() => startEdit(g)} style={{ padding: "5px 12px", borderRadius: "8px", fontSize: "0.75rem", background: "var(--color-secondary)", border: "1.5px solid var(--color-border)", cursor: "pointer", fontWeight: 500 }}>Edit</button>
-                      <button onClick={() => deleteGuest(g)} style={{ padding: "5px 12px", borderRadius: "8px", fontSize: "0.75rem", background: "oklch(0.58 0.22 27 / 0.08)", border: "1px solid oklch(0.58 0.22 27 / 0.15)", cursor: "pointer", color: "var(--color-destructive)", fontWeight: 500 }}>Delete</button>
+
+                    <div className="col-span-3 min-w-0 text-xs">
+                      <div className="flex items-center gap-1 truncate text-foreground">
+                        <Church size={13} className="shrink-0 text-accent" aria-hidden="true" />
+                        <span className="truncate">{g.church_name || g.origin}</span>
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-1.5 text-muted-foreground">
+                        <span className="font-mono-code">{g.phone || "No phone"}</span>
+                        {g.is_shared_phone && (
+                          <span className="inline-flex items-center gap-0.5 rounded bg-secondary px-1.5 py-0.5 text-xs">
+                            <Users size={11} aria-hidden="true" />
+                            Shared
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="col-span-2 flex flex-wrap gap-1">
+                      {(g.days_registered?.length ? g.days_registered : g.day ? [g.day] : [1]).map(
+                        (d) => {
+                          const checked = isCheckedInForDay(g, d);
+                          return (
+                            <button
+                              key={d}
+                              type="button"
+                              title={checked ? `Checked in Day ${d} (click to undo)` : `Click to check in Day ${d}`}
+                              onClick={() => quickToggleDayCheckIn(g, d)}
+                              className={`inline-flex cursor-pointer items-center gap-1 rounded-md border px-2 py-0.5 font-mono-code text-xs font-semibold ${
+                                checked
+                                  ? "border-success/35 bg-success/12 text-success"
+                                  : "border-border bg-secondary text-foreground hover:border-accent/40"
+                              }`}
+                            >
+                              {checked && <CheckCircle size={11} weight="fill" aria-hidden="true" />}
+                              D{d}
+                            </button>
+                          );
+                        },
+                      )}
+                    </div>
+
+                    <div className="col-span-1">
+                      {g.status === "camping" ? (
+                        <span
+                          title={g.accommodation_zone || "Camping"}
+                          className="inline-flex items-center gap-1 rounded-full bg-warm/12 px-2.5 py-1 text-xs font-semibold text-warm"
+                        >
+                          <Campfire size={13} aria-hidden="true" />
+                          Camp
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                          <SunHorizon size={13} aria-hidden="true" />
+                          Day
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="no-print col-span-1 flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        aria-label={`Edit ${formatFullName(g)}`}
+                        onClick={() => startEdit(g)}
+                        className="cursor-pointer rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      >
+                        <PencilSimple size={15} aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${formatFullName(g)}`}
+                        onClick={() => setConfirmDeleteGuest(g)}
+                        className="cursor-pointer rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/12 hover:text-destructive"
+                      >
+                        <Trash size={15} aria-hidden="true" />
+                      </button>
                     </div>
                   </div>
                 )}
@@ -317,99 +557,147 @@ function GuestsPage() {
             ))}
           </ul>
         )}
-        <div style={{ padding: "10px 20px", fontSize: "0.75rem", color: "var(--color-muted-foreground)", borderTop: "1px solid var(--color-border)" }}>
-          Showing {filtered.length} of {guests.length} guests
+
+        <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+          Showing {filtered.length} of {guests.length} registered attendees
         </div>
       </div>
 
-      {/* Mobile card list */}
-      <div className="md:hidden" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+      {/* Mobile & Tablet Card Roster */}
+      <div className="space-y-3 lg:hidden">
         {loading ? (
-          <div style={{ padding: "60px", textAlign: "center", color: "var(--color-muted-foreground)" }}>Loading…</div>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-28 animate-pulse rounded-2xl bg-secondary" />
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
-          <div style={{ padding: "60px", textAlign: "center", color: "var(--color-muted-foreground)" }}>No guests found.</div>
+          <div className="surface-card p-10 text-center text-xs text-muted-foreground">
+            No attendees found matching your filters.
+          </div>
         ) : (
-          filtered.map((g, i) => (
-            <div key={g.id} className={`surface-card fade-in stagger-${Math.min(i + 1, 6)}`} style={{ padding: "14px 16px" }}>
-              {editingId === g.id ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-                    <input value={editForm.first_name || ""} onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })} style={inputCls} placeholder="First name" />
-                    <input value={editForm.last_name || ""} onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })} style={inputCls} placeholder="Last name" />
-                  </div>
-                  <input value={editForm.origin || ""} onChange={(e) => setEditForm({ ...editForm, origin: e.target.value })} style={inputCls} placeholder="Origin" />
-                  <input value={editForm.phone || ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={inputCls} placeholder="Phone" />
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-                    <select value={editForm.day || ""} onChange={(e) => setEditForm({ ...editForm, day: e.target.value ? parseInt(e.target.value) : null })} style={inputCls}>
-                      <option value="">No day</option>
-                      <option value="1">Day 1</option>
-                      <option value="2">Day 2</option>
-                      <option value="3">Day 3</option>
-                    </select>
-                    <select value={editForm.status || "not_camping"} onChange={(e) => setEditForm({ ...editForm, status: e.target.value as "camping" | "not_camping" })} style={inputCls}>
-                      <option value="camping">Camping</option>
-                      <option value="not_camping">Not camping</option>
-                    </select>
-                  </div>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <button onClick={saveEdit} style={{ flex: 1, padding: "9px", borderRadius: "10px", fontSize: "0.85rem", fontWeight: 600, background: "var(--color-primary)", color: "var(--color-primary-foreground)", border: "none", cursor: "pointer" }}>Save</button>
-                    <button onClick={cancelEdit} style={{ flex: 1, padding: "9px", borderRadius: "10px", fontSize: "0.85rem", background: "var(--color-secondary)", border: "none", cursor: "pointer" }}>Cancel</button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "10px" }}>
-                    <div style={{ display: "flex", gap: "10px", alignItems: "center", minWidth: 0 }}>
-                      <div style={{
-                        width: "36px", height: "36px", borderRadius: "50%", flexShrink: 0,
-                        background: "linear-gradient(135deg, oklch(0.55 0.22 258 / 0.15), oklch(0.65 0.2 290 / 0.1))",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)",
-                      }}>
-                        {g.first_name[0]}{g.last_name[0]}
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <Link to="/guests/$id" params={{ id: g.id }} style={{ fontWeight: 700, fontSize: "0.9rem", textDecoration: "none", color: "var(--color-foreground)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {[g.first_name, g.middle_name, g.last_name].filter(Boolean).join(" ")}
-                        </Link>
-                        <div style={{ fontSize: "0.75rem", color: "var(--color-muted-foreground)" }}>{g.origin}</div>
-                      </div>
-                    </div>
-                    <span style={{
-                      fontSize: "0.68rem", padding: "3px 8px", borderRadius: "9999px", fontWeight: 600, flexShrink: 0,
-                      background: g.status === "camping" ? "oklch(0.55 0.22 258 / 0.1)" : "var(--color-muted)",
-                      color: g.status === "camping" ? "var(--color-accent)" : "var(--color-muted-foreground)",
-                      border: `1px solid ${g.status === "camping" ? "oklch(0.55 0.22 258 / 0.2)" : "var(--color-border)"}`,
-                    }}>
-                      {g.status === "camping" ? "⛺" : "☀️"} {g.status === "camping" ? "Camping" : "Day"}
+          filtered.map((g) => (
+            <div key={g.id} className="surface-card space-y-3 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="rounded bg-secondary px-2 py-0.5 font-mono-code text-xs font-semibold text-accent">
+                      {g.reg_code}
                     </span>
+                    {g.gender !== "unspecified" && (
+                      <span className="text-xs text-muted-foreground">{GENDER_LABELS[g.gender]}</span>
+                    )}
                   </div>
+                  <Link
+                    to="/guests/$id"
+                    params={{ id: g.id }}
+                    className="mt-1 block truncate text-base font-bold text-foreground no-underline hover:text-accent"
+                  >
+                    {formatFullName(g)}
+                  </Link>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {g.church_name ? `${g.church_name} · ${g.origin}` : g.origin}
+                  </p>
+                </div>
 
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
-                    <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                      <span style={{ fontSize: "0.78rem", color: "var(--color-muted-foreground)" }}>{g.phone}</span>
-                      {g.day && (
-                        <span style={{ fontSize: "0.72rem", padding: "2px 8px", borderRadius: "6px", fontWeight: 600, background: "oklch(0.55 0.22 258 / 0.08)", color: "var(--color-accent)" }}>
-                          Day {g.day}
-                        </span>
-                      )}
-                    </div>
-                    <div className="no-print" style={{ display: "flex", gap: "6px" }}>
-                      <button onClick={() => startEdit(g)} style={{ padding: "5px 12px", borderRadius: "8px", fontSize: "0.75rem", background: "var(--color-secondary)", border: "1.5px solid var(--color-border)", cursor: "pointer", fontWeight: 500 }}>Edit</button>
-                      <button onClick={() => deleteGuest(g)} style={{ padding: "5px 12px", borderRadius: "8px", fontSize: "0.75rem", background: "oklch(0.58 0.22 27 / 0.08)", border: "1px solid oklch(0.58 0.22 27 / 0.15)", cursor: "pointer", color: "var(--color-destructive)", fontWeight: 500 }}>Delete</button>
-                    </div>
-                  </div>
-                </>
-              )}
+                {g.status === "camping" ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warm/12 px-2.5 py-1 text-xs font-semibold text-warm">
+                    <Campfire size={13} aria-hidden="true" />
+                    Camp
+                  </span>
+                ) : (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                    Day
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(g.days_registered?.length ? g.days_registered : g.day ? [g.day] : [1]).map((d) => {
+                    const checked = isCheckedInForDay(g, d);
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => quickToggleDayCheckIn(g, d)}
+                        className={`inline-flex cursor-pointer items-center gap-1 rounded-md border px-2.5 py-1 font-mono-code text-xs font-semibold ${
+                          checked
+                            ? "border-success/35 bg-success/12 text-success"
+                            : "border-border bg-secondary text-foreground"
+                        }`}
+                      >
+                        {checked && <CheckCircle size={12} weight="fill" aria-hidden="true" />}
+                        Day {d}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="no-print flex items-center gap-2">
+                  <Link
+                    to="/guests/$id"
+                    params={{ id: g.id }}
+                    className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs font-semibold text-foreground no-underline"
+                  >
+                    Badge & details
+                  </Link>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${formatFullName(g)}`}
+                    onClick={() => setConfirmDeleteGuest(g)}
+                    className="cursor-pointer rounded-lg border border-destructive/20 bg-destructive/10 p-1.5 text-destructive"
+                  >
+                    <Trash size={15} aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
             </div>
           ))
         )}
-        {!loading && (
-          <p style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--color-muted-foreground)", padding: "8px 0" }}>
-            Showing {filtered.length} of {guests.length} guests
-          </p>
-        )}
       </div>
+
+      {/* Accessible Delete Confirmation Dialog */}
+      {confirmDeleteGuest && (
+        <div
+          className="no-print fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-xs"
+          onClick={() => setConfirmDeleteGuest(null)}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="del-guest-title"
+            className="bezel-shell scale-in w-full max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bezel-core space-y-4 p-6">
+              <h3 id="del-guest-title" className="text-base font-bold text-foreground">
+                Remove attendee record?
+              </h3>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                This will permanently remove <strong>{formatFullName(confirmDeleteGuest)}</strong> (
+                <span className="font-mono-code">{confirmDeleteGuest.reg_code}</span>) from the active roster.
+              </p>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteGuest(null)}
+                  className="cursor-pointer rounded-full border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground"
+                >
+                  Keep record
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  className="cursor-pointer rounded-full bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground"
+                >
+                  Remove permanently
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
