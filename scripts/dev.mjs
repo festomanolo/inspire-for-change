@@ -25,6 +25,8 @@ function findAvailablePort(startPort) {
         reject(err);
       }
     });
+    probe.listen(startPort, "0.0.0.0", () => {
+      const addr = probe.address();
 
 function prefixStream(stream, label, color) {
   let buffer = "";
