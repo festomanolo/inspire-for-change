@@ -351,21 +351,39 @@ export const dbHandlers = {
         id: crypto.randomUUID(),
         code: uniqueCode,
         created_at: new Date().toISOString(),
-      };
+      });
       events.push(newEvent);
       writeJson(FILES.events, events);
       return newEvent;
     },
+
+    update: (id: string, updates: Partial<EventRow>) => {
+      const events = loadNormalizedEvents();
+      const idx = events.findIndex((e) => e.id === id);
+      if (idx === -1) throw new Error("Event not found");
+      events[idx] = normalizeEvent({ ...events[idx], ...updates });
+      writeJson(FILES.events, events);
+      return events[idx];
+    },
+
+    delete: (id: string) => {
+      const events = loadNormalizedEvents();
+      if (events.length <= 1) {
+        throw new Error("Cannot delete the only remaining church event.");
+      }
+      const filtered = events.filter((e) => e.id !== id);
+      writeJson(FILES.events, filtered);
+      const guests = loadNormalizedGuests().filter((g) => g.event_id !== id);
+      writeJson(FILES.guests, guests);
+    },
   },
 
   guests: {
-    getAll: () => {
-      return readJson<Guest[]>(FILES.guests, []);
-    },
+    getAll: () => loadNormalizedGuests(),
 
     getByField: (field: string, value: string, orderBy?: string, ascending?: boolean) => {
-      const guests = readJson<Guest[]>(FILES.guests, []);
-      let filtered = guests.filter((g) => (g as any)[field] === value);
+      const guests = loadNormalizedGuests();
+      let filtered = guests.filter((g) => String((g as any)[field]) === String(value));
 
       if (orderBy) {
         filtered = filtered.sort((a, b) => {
@@ -380,27 +398,95 @@ export const dbHandlers = {
     },
 
     getById: (id: string) => {
-      const guests = readJson<Guest[]>(FILES.guests, []);
-      const guest = guests.find((g) => g.id === id);
+      const guests = loadNormalizedGuests();
+      const guest = guests.find((g) => g.id === id || g.reg_code.toLowerCase() === id.toLowerCase());
       if (!guest) throw new Error("Guest not found");
       return guest;
     },
 
-    create: (row: Omit<Guest, "id" | "created_at" | "updated_at">) => {
-      const guests = readJson<Guest[]>(FILES.guests, []);
+    create: (row: Partial<Guest> & { event_id: string; first_name: string; last_name: string }) => {
+      const events = loadNormalizedEvents();
+      const event = events.find((e) => e.id === row.event_id);
+      const eventCode = event?.code || "IFC-26";
+
+      const guests = loadNormalizedGuests();
+      const eventGuests = guests.filter((g) => g.event_id === row.event_id);
+
+      // Compute next monotonic sequence number for reg_code (never reuses deleted numbers)
+      let maxSeq = eventGuests.length;
+      for (const eg of eventGuests) {
+        const match = eg.reg_code.match(/-(\d+)$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxSeq) maxSeq = num;
+        }
+      }
+
+      const now = new Date().toISOString();
+      const days = Array.isArray(row.days_registered) && row.days_registered.length > 0
+        ? Array.from(new Set(row.days_registered)).sort((a, b) => a - b)
+        : typeof row.day === "number" && row.day >= 1
+          ? [row.day]
+          : [1];
+
+      const gender = row.gender === "male" || row.gender === "female" ? row.gender : "unspecified";
+      const status = row.status === "camping" ? "camping" : "not_camping";
+      const ageGroup = row.age_group || "adult";
+
       const newGuest: Guest = {
         id: crypto.randomUUID(),
-        ...row,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        reg_code: row.reg_code || generateRegCode(eventCode, maxSeq + 1),
+        event_id: row.event_id,
+        household_id: row.household_id ?? null,
+        first_name: row.first_name.trim(),
+        middle_name: row.middle_name ? row.middle_name.trim() : null,
+        last_name: row.last_name.trim(),
+        gender,
+        age_group: ageGroup,
+        origin: (row.origin ?? "").trim(),
+        church_name: row.church_name ? row.church_name.trim() : null,
+        ministry_role: row.ministry_role || "member",
+        phone: (row.phone ?? "").trim(),
+        is_shared_phone: Boolean(row.is_shared_phone),
+        guardian_name: row.guardian_name ? row.guardian_name.trim() : null,
+        email: row.email ? row.email.trim() : null,
+        status,
+        accommodation_zone:
+          row.accommodation_zone !== undefined
+            ? row.accommodation_zone
+            : suggestAccommodationZone(gender, status, ageGroup),
+        dietary_medical: row.dietary_medical ? row.dietary_medical.trim() : null,
+        day: days[0] ?? null,
+        days_registered: days,
+        check_ins: row.check_ins && typeof row.check_ins === "object" ? row.check_ins : {},
+        created_by: row.created_by ?? null,
+        updated_by: row.updated_by ?? row.created_by ?? null,
+        created_at: now,
+        updated_at: now,
       };
+
       guests.push(newGuest);
       writeJson(FILES.guests, guests);
+
+      appendAuditLog({
+        guest_id: newGuest.id,
+        event_id: newGuest.event_id,
+        edited_by: newGuest.created_by,
+        action: "create",
+        changes: {
+          reg_code: newGuest.reg_code,
+          name: `${newGuest.first_name} ${newGuest.last_name}`,
+          gender: newGuest.gender,
+          days_registered: newGuest.days_registered,
+          status: newGuest.status,
+        },
+      });
+
       return newGuest;
     },
 
     update: (id: string, updates: Partial<Guest>) => {
-      const guests = readJson<Guest[]>(FILES.guests, []);
+      const guests = loadNormalizedGuests();
       const index = guests.findIndex((g) => g.id === id);
       if (index === -1) throw new Error("Guest not found");
 
