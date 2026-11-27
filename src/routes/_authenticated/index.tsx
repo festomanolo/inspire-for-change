@@ -97,7 +97,11 @@ function DashboardOverview() {
   }, [selected]);
 
   if (!selected) {
-    return <div className="py-16 text-center text-sm text-muted-foreground">Loading sanctuary overview…</div>;
+    return (
+      <div className="py-16 text-center text-sm text-muted-foreground">
+        Loading sanctuary overview…
+      </div>
+    );
   }
 
   const total = guests.length;
@@ -376,7 +380,11 @@ function DashboardOverview() {
 
           {recentGuests.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border py-12 text-center">
-              <IdentificationBadge size={28} className="mx-auto mb-2 text-muted-foreground" aria-hidden="true" />
+              <IdentificationBadge
+                size={28}
+                className="mx-auto mb-2 text-muted-foreground"
+                aria-hidden="true"
+              />
               <p className="text-sm font-semibold text-foreground">No attendees registered yet</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Issue your first attendee badge pass to populate live sanctuary telemetry.
