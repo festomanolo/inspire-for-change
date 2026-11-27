@@ -1,6 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { EventCategory, EventRow, EventStatus } from "@/lib/types";
+import {
+  buildSuggestedEventCode,
+  type EventCategory,
+  type EventRow,
+  type EventStatus,
+} from "@/lib/types";
 
 const STORAGE_KEY = "selectedEventId";
 const EVENT_BUS = "ifc:selected-event-changed";
