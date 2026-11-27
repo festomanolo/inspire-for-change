@@ -334,6 +334,9 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
                       {profile?.display_name ?? "Registrar"}
                     </div>
                     <div className="truncate text-xs text-muted-foreground">{profile?.email}</div>
+                    <span className="mt-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                      {STAFF_ROLE_LABELS[profile?.role || "registrar"]}
+                    </span>
                   </div>
 
                   <div className="py-1">
@@ -342,12 +345,12 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
                       role="menuitem"
                       onClick={() => {
                         setMenuOpen(false);
-                        setEventModalOpen(true);
+                        openEventStudio({ mode: "create" });
                       }}
                       className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-secondary"
                     >
                       <CalendarPlus size={15} className="text-accent" aria-hidden="true" />
-                      Create church event
+                      Create new event
                     </button>
 
                     <button
