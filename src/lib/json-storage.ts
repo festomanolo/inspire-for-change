@@ -341,6 +341,23 @@ function makeProfileBuilder(params: URLSearchParams) {
       return this;
     },
 
+    select() {
+      return this;
+    },
+
+    single() {
+      const id = this._params.get("id");
+      if (this._updatePayload !== null && id) {
+        return apiPut<Profile>(`/profiles/${id}`, this._updatePayload)
+          .then((data) => {
+            emitTableChange("profiles", "UPDATE", data);
+            return { data, error: null };
+          })
+          .catch((err) => ({ data: null, error: { message: err.message } }));
+      }
+      return Promise.resolve({ data: null, error: { message: "Unsupported single profile query" } });
+    },
+
     maybeSingle() {
       const field = [...this._params.keys()][0];
       const value = this._params.get(field) ?? "";
