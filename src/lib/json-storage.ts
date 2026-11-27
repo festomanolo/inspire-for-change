@@ -531,6 +531,7 @@ class LocalRealtimeChannel {
   }
 
   subscribe() {
+    ensureRealtimeStream();
     return this;
   }
 
