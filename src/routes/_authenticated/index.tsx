@@ -2,16 +2,37 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEvents } from "@/hooks/use-events";
-import type { Guest, GuestEdit, Profile } from "@/lib/types";
+import {
+  EVENT_CATEGORY_LABELS,
+  GENDER_LABELS,
+  formatFullName,
+  isCheckedInForDay,
+  type Guest,
+  type GuestEdit,
+  type Profile,
+} from "@/lib/types";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import {
+  ArrowRight,
+  Campfire,
+  CheckCircle,
+  Church,
+  Clock,
+  IdentificationBadge,
+  MapPin,
+  QrCode,
+  Sparkle,
+  UserPlus,
+  UsersThree,
+} from "@phosphor-icons/react";
 
 export const Route = createFileRoute("/_authenticated/")({
-  head: () => ({ meta: [{ title: "Dashboard — Inspired for Change" }] }),
-  component: Dashboard,
+  head: () => ({ meta: [{ title: "Sanctuary Overview — Inspired for Change" }] }),
+  component: DashboardOverview,
 });
 
-function Dashboard() {
+function DashboardOverview() {
   const { selected } = useEvents();
   const [guests, setGuests] = useState<Guest[]>([]);
   const [edits, setEdits] = useState<(GuestEdit & { guest?: Guest | null })[]>([]);
@@ -20,6 +41,7 @@ function Dashboard() {
   useEffect(() => {
     if (!selected) return;
     let cancelled = false;
+
     const load = async () => {
       const { data: gs } = await supabase
         .from("guests")
@@ -27,33 +49,36 @@ function Dashboard() {
         .eq("event_id", selected.id)
         .order("created_at", { ascending: false });
       if (cancelled) return;
-      setGuests((gs as Guest[]) ?? []);
+      setGuests((gs as unknown as Guest[]) ?? []);
 
       const { data: es } = await supabase
         .from("guest_edits")
         .select("*, guest:guests(*)")
         .order("edited_at", { ascending: false })
-        .limit(8);
+        .limit(12);
       if (cancelled) return;
-      const filtered = ((es as (GuestEdit & { guest?: Guest })[]) ?? []).filter(
-        (e) => e.guest?.event_id === selected.id,
+      const filteredEdits = ((es as unknown as (GuestEdit & { guest?: Guest })[]) ?? []).filter(
+        (e) => e.event_id === selected.id || e.guest?.event_id === selected.id,
       );
-      setEdits(filtered);
+      setEdits(filteredEdits.slice(0, 7));
 
       const { data: ps } = await supabase.from("profiles").select("*");
       if (cancelled) return;
       const map: Record<string, Profile> = {};
-      ((ps as Profile[]) ?? []).forEach((p) => (map[p.id] = p));
+      ((ps as unknown as Profile[]) ?? []).forEach((p) => {
+        map[p.id] = p;
+      });
       setProfiles(map);
     };
+
     load();
 
     const channel = supabase
       .channel("dashboard-" + selected.id)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "guests" }, (payload) => {
         const newGuest = payload.new as Guest;
-        if (newGuest.event_id === selected.id) {
-          toast.success(`New registration: ${newGuest.first_name} ${newGuest.last_name}`);
+        if (newGuest?.event_id === selected.id) {
+          toast.success(`Registered ${formatFullName(newGuest)} (${newGuest.reg_code})`);
           load();
         }
       })
