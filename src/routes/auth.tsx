@@ -2,49 +2,40 @@ import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import {
+  ArrowRight,
+  Campfire,
+  Church,
+  Eye,
+  EyeSlash,
+  IdentificationBadge,
+  QrCode,
+  UsersThree,
+} from "@phosphor-icons/react";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
-    meta: [{ title: "Sign in — Inspired for Change" }, { name: "description", content: "Staff sign in for guest registration." }],
+    meta: [
+      { title: "Registrar Sign in — Inspired for Change" },
+      { name: "description", content: "Sanctuary & church event registration desk sign in." },
+    ],
   }),
   component: AuthPage,
 });
 
 const signInSchema = z.object({
-  email: z.string().trim().email("Invalid email address").max(255),
+  email: z.string().trim().email("Enter a valid email address").max(255),
   password: z.string().min(6, "Password must be at least 6 characters").max(72),
 });
 
 const signUpSchema = signInSchema.extend({
-  displayName: z.string().trim().min(2, "Name must be at least 2 characters").max(80),
+  displayName: z.string().trim().min(2, "Full name must be at least 2 characters").max(80),
 });
-
-function EyeIcon({ open }: { open: boolean }) {
-  return open ? (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-      <circle cx="12" cy="12" r="3"/>
-    </svg>
-  ) : (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-      <line x1="1" y1="1" x2="23" y2="23"/>
-    </svg>
-  );
-}
-
-function SparkleIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
-    </svg>
-  );
-}
 
 function AuthPage() {
   const navigate = useNavigate();
   const router = useRouter();
-  const [mode, setMode] = useState<"signin" | "signup">("signup");
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -72,7 +63,7 @@ function AuthPage() {
           setLoading(false);
           return;
         }
-        const { error: err } = await supabase.auth.signUp({
+        const { data, error: err } = await supabase.auth.signUp({
           email: parsed.data.email,
           password: parsed.data.password,
           options: {
@@ -80,10 +71,14 @@ function AuthPage() {
             data: { display_name: parsed.data.displayName },
           },
         });
-        if (err) throw err;
-        setSuccess("Account created! Check your email to confirm, then sign in.");
+        if (err) throw new Error(err.message);
+        if (data?.session) {
+          await router.invalidate();
+          navigate({ to: "/", replace: true });
+          return;
+        }
+        setSuccess("Staff account created. You can now sign in below.");
         setMode("signin");
-        setEmail(parsed.data.email);
         setPassword("");
       } else {
         const parsed = signInSchema.safeParse({ email, password });
@@ -93,12 +88,12 @@ function AuthPage() {
           return;
         }
         const { error: err } = await supabase.auth.signInWithPassword(parsed.data);
-        if (err) throw err;
+        if (err) throw new Error(err.message);
         await router.invalidate();
         navigate({ to: "/", replace: true });
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(err instanceof Error ? err.message : "Authentication failed. Please try again.");
     } finally {
       setLoading(false);
     }
