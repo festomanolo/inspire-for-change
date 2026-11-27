@@ -122,11 +122,7 @@ export function useEvents() {
       camping_enabled: input.camping_enabled !== false,
       status: input.status || "active",
     };
-    const { data, error } = await supabase
-      .from("events")
-      .insert(payload as any)
-      .select()
-      .single();
+    const { data, error } = await supabase.from("events").insert(payload).select().single();
     if (error) throw new Error(error.message);
     await refresh();
     if (data) {
@@ -164,7 +160,8 @@ export function useEvents() {
   };
 
   const updateEvent = async (id: string, updates: Partial<EventRow>) => {
-    const { data, error } = await (supabase.from("events") as any)
+    const { data, error } = await supabase
+      .from("events")
       .update(updates)
       .eq("id", id)
       .select()
@@ -178,7 +175,7 @@ export function useEvents() {
   };
 
   const deleteEvent = async (id: string) => {
-    const { error } = await (supabase.from("events") as any).delete().eq("id", id);
+    const { error } = await supabase.from("events").delete().eq("id", id);
     if (error) throw new Error(error.message);
     await refresh();
     if (typeof window !== "undefined") {
