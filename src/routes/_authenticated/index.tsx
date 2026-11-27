@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useEvents } from "@/hooks/use-events";
+import { openEventStudio, useEvents } from "@/hooks/use-events";
 import {
   EVENT_CATEGORY_LABELS,
   GENDER_LABELS,
@@ -15,6 +15,8 @@ import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import {
   ArrowRight,
+  Buildings,
+  CalendarPlus,
   Campfire,
   CheckCircle,
   Church,
