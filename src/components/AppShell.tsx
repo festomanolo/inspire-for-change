@@ -286,9 +286,9 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
 
                 <button
                   type="button"
-                  onClick={() => setEventModalOpen(true)}
-                  title="Create new church event"
-                  aria-label="Create new church event"
+                  onClick={() => openEventStudio({ mode: "create" })}
+                  title="Create new event"
+                  aria-label="Create new event"
                   className="hidden h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:border-accent/40 hover:text-foreground sm:inline-flex"
                 >
                   <Plus size={15} weight="bold" aria-hidden="true" />
@@ -319,7 +319,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
                   {initials}
                 </span>
                 <span className="hidden max-w-[96px] truncate sm:inline">
-                  {profile?.display_name ?? "Registrar"}
+                  {profile?.display_name ?? "Staff"}
                 </span>
                 <CaretDown size={12} className="text-muted-foreground" aria-hidden="true" />
               </button>
@@ -327,7 +327,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
               {menuOpen && (
                 <div
                   role="menu"
-                  className="scale-in surface-elevated absolute top-[calc(100%+8px)] right-0 z-50 w-60 overflow-hidden p-1.5"
+                  className="scale-in surface-elevated absolute top-[calc(100%+8px)] right-0 z-50 w-64 overflow-hidden p-1.5"
                 >
                   <div className="border-b border-border px-3 py-2.5">
                     <div className="truncate text-sm font-semibold text-foreground">
