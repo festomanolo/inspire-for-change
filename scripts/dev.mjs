@@ -23,6 +23,8 @@ function findAvailablePort(startPort) {
         resolve(findAvailablePort(startPort + 1));
       } else {
         reject(err);
+      }
+    });
 
 function prefixStream(stream, label, color) {
   let buffer = "";
