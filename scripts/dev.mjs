@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import net from "node:net";
 import process from "node:process";
 
 const BACKEND_PORT = process.env.BACKEND_PORT || "3001";
