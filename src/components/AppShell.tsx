@@ -137,15 +137,19 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
             to="/"
             className="flex min-w-0 shrink items-center gap-2.5 text-foreground no-underline"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
-              <Church size={19} weight="duotone" aria-hidden="true" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
+              {hasCustomOrganizer ? (
+                <Buildings size={19} weight="duotone" aria-hidden="true" />
+              ) : (
+                <Church size={19} weight="duotone" aria-hidden="true" />
+              )}
             </div>
-            <div className="leading-tight">
-              <span className="block text-sm font-bold tracking-tight sm:text-[15px]">
-                Inspired for Change
+            <div className="min-w-0 leading-tight">
+              <span className="block max-w-[160px] truncate text-sm font-bold tracking-tight sm:max-w-[220px] sm:text-[15px]">
+                {activeBrandTitle}
               </span>
-              <span className="hidden text-[11px] text-muted-foreground sm:block">
-                Church Events & Sanctuary Registry
+              <span className="hidden truncate text-[11px] text-muted-foreground sm:block">
+                Multi-Event & Sanctuary Hub
               </span>
             </div>
           </Link>
