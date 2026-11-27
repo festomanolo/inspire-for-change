@@ -353,6 +353,26 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
                       Create new event
                     </button>
 
+                    <Link
+                      to="/manager"
+                      role="menuitem"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-foreground no-underline hover:bg-secondary"
+                    >
+                      <ChartBar size={15} className="text-accent" aria-hidden="true" />
+                      Manager dashboard
+                    </Link>
+
+                    <Link
+                      to="/admin"
+                      role="menuitem"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-foreground no-underline hover:bg-secondary"
+                    >
+                      <ShieldCheck size={15} className="text-accent" aria-hidden="true" />
+                      Event settings & audit logs
+                    </Link>
+
                     <button
                       id="export-all-btn"
                       type="button"
@@ -363,16 +383,6 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
                       <DownloadSimple size={15} className="text-accent" aria-hidden="true" />
                       Export full CSV archive
                     </button>
-
-                    <Link
-                      to="/admin"
-                      role="menuitem"
-                      onClick={() => setMenuOpen(false)}
-                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-foreground no-underline hover:bg-secondary"
-                    >
-                      <ChartBar size={15} className="text-accent" aria-hidden="true" />
-                      Ministry analytics & logs
-                    </Link>
                   </div>
 
                   <div className="border-t border-border pt-1">
@@ -394,198 +404,8 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
         </div>
       </header>
 
-      {/* Create Church Event Modal */}
-      {eventModalOpen && (
-        <div
-          className="no-print fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-xs"
-          onClick={() => setEventModalOpen(false)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="create-event-title"
-            className="bezel-shell scale-in w-full max-w-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <form onSubmit={handleCreateEvent} className="bezel-core space-y-4 p-6">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 id="create-event-title" className="text-lg font-bold text-foreground">
-                    New church event
-                  </h2>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Configure a conference, camp, crusade, or special convocation with its own badge sequence.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setEventModalOpen(false)}
-                  aria-label="Close modal"
-                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                >
-                  <X size={16} aria-hidden="true" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="sm:col-span-2">
-                  <label htmlFor="ev-name" className="mb-1.5 block text-xs font-semibold text-foreground">
-                    Event title
-                  </label>
-                  <input
-                    id="ev-name"
-                    required
-                    value={newEventForm.name}
-                    onChange={(e) => setNewEventForm({ ...newEventForm, name: e.target.value })}
-                    placeholder="e.g. Easter Youth Camp"
-                    className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="ev-year" className="mb-1.5 block text-xs font-semibold text-foreground">
-                    Year
-                  </label>
-                  <input
-                    id="new-year-input"
-                    type="number"
-                    min={2020}
-                    max={2100}
-                    value={newEventForm.year}
-                    onChange={(e) => setNewEventForm({ ...newEventForm, year: Number(e.target.value) })}
-                    className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 font-mono-code text-sm text-foreground"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div>
-                  <label htmlFor="ev-cat" className="mb-1.5 block text-xs font-semibold text-foreground">
-                    Event type
-                  </label>
-                  <select
-                    id="ev-cat"
-                    value={newEventForm.category}
-                    onChange={(e) =>
-                      setNewEventForm({ ...newEventForm, category: e.target.value as EventCategory })
-                    }
-                    className="w-full rounded-xl border border-border bg-input px-3 py-2.5 text-sm text-foreground"
-                  >
-                    {Object.entries(EVENT_CATEGORY_LABELS).map(([k, label]) => (
-                      <option key={k} value={k}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="ev-days" className="mb-1.5 block text-xs font-semibold text-foreground">
-                    Duration (days)
-                  </label>
-                  <input
-                    id="ev-days"
-                    type="number"
-                    min={1}
-                    max={14}
-                    value={newEventForm.total_days}
-                    onChange={(e) =>
-                      setNewEventForm({ ...newEventForm, total_days: Number(e.target.value) })
-                    }
-                    className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 font-mono-code text-sm text-foreground"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="ev-cap" className="mb-1.5 block text-xs font-semibold text-foreground">
-                    Target capacity
-                  </label>
-                  <input
-                    id="ev-cap"
-                    type="number"
-                    min={10}
-                    max={100000}
-                    value={newEventForm.capacity}
-                    onChange={(e) =>
-                      setNewEventForm({ ...newEventForm, capacity: Number(e.target.value) })
-                    }
-                    className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 font-mono-code text-sm text-foreground"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="ev-venue" className="mb-1.5 block text-xs font-semibold text-foreground">
-                    Sanctuary / Venue
-                  </label>
-                  <input
-                    id="ev-venue"
-                    value={newEventForm.venue}
-                    onChange={(e) => setNewEventForm({ ...newEventForm, venue: e.target.value })}
-                    placeholder="Main Sanctuary & Grounds"
-                    className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="ev-date" className="mb-1.5 block text-xs font-semibold text-foreground">
-                    Start date (optional)
-                  </label>
-                  <input
-                    id="ev-date"
-                    type="date"
-                    value={newEventForm.start_date}
-                    onChange={(e) => setNewEventForm({ ...newEventForm, start_date: e.target.value })}
-                    className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="ev-sub" className="mb-1.5 block text-xs font-semibold text-foreground">
-                  Theme or scripture focus (optional)
-                </label>
-                <input
-                  id="ev-sub"
-                  value={newEventForm.subtitle}
-                  onChange={(e) => setNewEventForm({ ...newEventForm, subtitle: e.target.value })}
-                  placeholder="e.g. Isaiah 43:19 — Walking in Renewal"
-                  className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground"
-                />
-              </div>
-
-              <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border bg-secondary/60 px-3.5 py-2.5 text-xs font-medium text-foreground">
-                <input
-                  type="checkbox"
-                  checked={newEventForm.camping_enabled}
-                  onChange={(e) =>
-                    setNewEventForm({ ...newEventForm, camping_enabled: e.target.checked })
-                  }
-                  className="h-4 w-4 accent-primary"
-                />
-                <span>Enable on-site camping & gender-segregated dormitory allocation</span>
-              </label>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  id="cancel-new-year-btn"
-                  type="button"
-                  onClick={() => setEventModalOpen(false)}
-                  className="cursor-pointer rounded-full border border-border bg-secondary px-4 py-2 text-xs font-semibold text-secondary-foreground hover:bg-muted"
-                >
-                  Cancel
-                </button>
-                <button
-                  id="create-new-year-btn"
-                  type="submit"
-                  disabled={creatingEvent}
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground hover:opacity-95 disabled:opacity-50"
-                >
-                  <ListChecks size={15} aria-hidden="true" />
-                  {creatingEvent ? "Creating…" : "Create event"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Global Multi-Program Event Studio Modal */}
+      <EventStudioModal />
 
       {/* Main Workspace */}
       <main
@@ -602,7 +422,12 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
       >
         <div className="grid h-16 grid-cols-5">
           {NAV_ITEMS.map((item) => {
-            const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+            const active =
+              item.to === "/"
+                ? pathname === "/"
+                : item.to === "/manager"
+                  ? pathname.startsWith("/manager") || pathname.startsWith("/admin")
+                  : pathname.startsWith(item.to);
             const Icon = item.Icon;
             return (
               <Link
