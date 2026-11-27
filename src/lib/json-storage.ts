@@ -1,30 +1,27 @@
-// JSON file-based storage for testing (replaces Supabase)
+// JSON file-based storage client (mirrors Supabase fluent API + church event extensions)
 import type { Profile, Guest, EventRow, GuestEdit } from "./types";
 
 const API_BASE = "/api/storage";
 
-// Mock user type
 export type JsonUser = {
   id: string;
   email: string;
   created_at: string;
 };
 
-// Mock session type
 export type JsonSession = {
   user: JsonUser;
   access_token: string;
   expires_at: number;
 };
 
-// Helper functions to interact with the API
 async function apiGet<T>(endpoint: string): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`);
   if (!response.ok) throw new Error(`Failed to fetch ${endpoint}`);
   return response.json();
 }
 
-async function apiPost<T>(endpoint: string, data: any): Promise<T> {
+async function apiPost<T>(endpoint: string, data: unknown): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -37,22 +34,27 @@ async function apiPost<T>(endpoint: string, data: any): Promise<T> {
   return response.json();
 }
 
-async function apiPut<T>(endpoint: string, data: any): Promise<T> {
+async function apiPut<T>(endpoint: string, data: unknown): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!response.ok) throw new Error(`Failed to update ${endpoint}`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: `Failed to update ${endpoint}` }));
+    throw new Error(error.message || `Failed to update ${endpoint}`);
+  }
   return response.json();
 }
 
 async function apiDelete(endpoint: string): Promise<void> {
   const response = await fetch(`${API_BASE}${endpoint}`, { method: "DELETE" });
-  if (!response.ok) throw new Error(`Failed to delete ${endpoint}`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: `Failed to delete ${endpoint}` }));
+    throw new Error(error.message || `Failed to delete ${endpoint}`);
+  }
 }
 
-// Auth state listeners
 type AuthListener = (event: string, session: JsonSession | null) => void;
 const authListeners = new Set<AuthListener>();
 
@@ -60,7 +62,17 @@ function notifyAuthListeners(event: string, session: JsonSession | null) {
   authListeners.forEach((listener) => listener(event, session));
 }
 
-// JSON Auth API
+// Local broadcast bus so open tabs/components react immediately to mutations in JSON mode
+type TableChangeCallback = (payload: { eventType: string; new: any; old: any }) => void;
+const tableSubscribers = new Map<string, Set<TableChangeCallback>>();
+
+function emitTableChange(table: string, eventType: string, newRow: any, oldRow: any = null) {
+  const subs = tableSubscribers.get(table);
+  if (subs) {
+    subs.forEach((cb) => cb({ eventType, new: newRow, old: oldRow }));
+  }
+}
+
 export const jsonAuth = {
   getSession: async () => {
     try {
@@ -116,7 +128,6 @@ export const jsonAuth = {
 
   onAuthStateChange: (callback: AuthListener) => {
     authListeners.add(callback);
-    // Immediately call with current session
     jsonAuth.getSession().then(({ data }) => callback("INITIAL_SESSION", data.session));
 
     return {
@@ -128,11 +139,6 @@ export const jsonAuth = {
     };
   },
 };
-
-// ─── Fluent Query Builder ────────────────────────────────────────────────────
-// Mimics the Supabase client's chainable API for the tables used in this app.
-
-type QueryResult<T> = Promise<{ data: T | null; error: { message: string } | null }>;
 
 function makeGuestEditBuilder(params: URLSearchParams) {
   const builder: any = {
@@ -158,7 +164,6 @@ function makeGuestEditBuilder(params: URLSearchParams) {
       try {
         const qs = this._params.toString() ? "?" + this._params.toString() : "";
         const raw = await apiGet<any[]>(`/guest-edits${qs}`);
-        // Attach guest data if a join was requested (simplified: fetch separately)
         const joinGuest = this._params.get("_joinGuest") === "true";
         let data: any[] = raw;
         if (joinGuest) {
@@ -168,9 +173,71 @@ function makeGuestEditBuilder(params: URLSearchParams) {
             guest: guests.find((g) => g.id === e.guest_id) ?? null,
           }));
         }
-        // Apply limit client-side
         const limit = this._params.get("limit");
         if (limit) data = data.slice(0, parseInt(limit, 10));
+        resolve({ data, error: null });
+      } catch (err: any) {
+        if (reject) reject(err);
+        else resolve({ data: null, error: { message: err.message } });
+      }
+    },
+  };
+  return builder;
+}
+
+function makeEventBuilder(params: URLSearchParams) {
+  const builder: any = {
+    _params: params,
+    _updatePayload: null as any,
+    _isDelete: false,
+
+    eq(field: string, value: string) {
+      this._params.set(field, value);
+      return this;
+    },
+
+    order(field: string, options?: { ascending?: boolean }) {
+      this._params.set("orderBy", field);
+      this._params.set("asc", String(options?.ascending !== false));
+      return this;
+    },
+
+    select() {
+      return this;
+    },
+
+    single() {
+      const id = this._params.get("id");
+      if (this._updatePayload !== null) {
+        return apiPut<EventRow>(`/events/${id}`, this._updatePayload)
+          .then((data) => {
+            emitTableChange("events", "UPDATE", data);
+            return { data, error: null };
+          })
+          .catch((err) => ({ data: null, error: { message: err.message } }));
+      }
+      return Promise.resolve({ data: null, error: { message: "Unsupported single query" } });
+    },
+
+    async then(resolve: (v: any) => void, reject?: (e: any) => void) {
+      try {
+        if (this._isDelete) {
+          const id = this._params.get("id");
+          await apiDelete(`/events/${id}`);
+          emitTableChange("events", "DELETE", null, { id });
+          resolve({ error: null });
+          return;
+        }
+        if (this._updatePayload !== null) {
+          const id = this._params.get("id");
+          const data = await apiPut<EventRow>(`/events/${id}`, this._updatePayload);
+          emitTableChange("events", "UPDATE", data);
+          resolve({ data, error: null });
+          return;
+        }
+        const orderBy = this._params.get("orderBy") || "year";
+        const asc = this._params.get("asc") !== "false";
+        const data = await apiGet<EventRow[]>(`/events?orderBy=${orderBy}&asc=${asc}`);
         resolve({ data, error: null });
       } catch (err: any) {
         if (reject) reject(err);
@@ -188,10 +255,8 @@ function makeGuestBuilder(params: URLSearchParams) {
     _isDelete: false,
 
     eq(field: string, value: string) {
-      // If this is an update/delete, the first eq is the primary filter
-      if (this._updatePayload !== null) {
-        if (!this._params.has("id")) this._params.set("id", value);
-        // additional eq calls are just ignored (optimistic concurrency)
+      if (this._updatePayload !== null || this._isDelete) {
+        if (!this._params.has("id") && field === "id") this._params.set("id", value);
         return this;
       }
       this._params.set(field, value);
@@ -220,7 +285,11 @@ function makeGuestBuilder(params: URLSearchParams) {
       const id = this._params.get("id");
       if (this._updatePayload !== null) {
         return apiPut<Guest>(`/guests/${id}`, this._updatePayload)
-          .then((data) => ({ data, error: null }))
+          .then((data) => {
+            emitTableChange("guests", "UPDATE", data);
+            emitTableChange("guest_edits", "INSERT", {});
+            return { data, error: null };
+          })
           .catch((err) => ({ data: null, error: { message: err.message } }));
       }
       return apiGet<Guest>(`/guests/${id}`)
@@ -229,8 +298,6 @@ function makeGuestBuilder(params: URLSearchParams) {
     },
 
     select(_cols?: string) {
-      // after an update: return this builder (for .single() chaining)
-      if (this._updatePayload !== null) return this;
       return this;
     },
 
@@ -239,12 +306,16 @@ function makeGuestBuilder(params: URLSearchParams) {
         if (this._isDelete) {
           const id = this._params.get("id");
           await apiDelete(`/guests/${id}`);
+          emitTableChange("guests", "DELETE", null, { id });
+          emitTableChange("guest_edits", "INSERT", {});
           resolve({ error: null });
           return;
         }
         if (this._updatePayload !== null) {
           const id = this._params.get("id");
           const data = await apiPut<Guest>(`/guests/${id}`, this._updatePayload);
+          emitTableChange("guests", "UPDATE", data);
+          emitTableChange("guest_edits", "INSERT", {});
           resolve({ data, error: null });
           return;
         }
@@ -279,7 +350,6 @@ function makeProfileBuilder(params: URLSearchParams) {
 
     async then(resolve: (v: any) => void, reject?: (e: any) => void) {
       try {
-        // No filters → return all profiles
         const qs = this._params.toString() ? "?" + this._params.toString() : "";
         const data = await apiGet<Profile[]>(`/profiles${qs}`);
         resolve({ data, error: null });
@@ -292,7 +362,6 @@ function makeProfileBuilder(params: URLSearchParams) {
   return builder;
 }
 
-// JSON Database API
 export const jsonDb = {
   profiles: {
     select(_cols?: string) {
@@ -302,20 +371,32 @@ export const jsonDb = {
 
   events: {
     select(_cols?: string) {
-      return {
-        order: (field: string, options: { ascending: boolean }) => {
-          return apiGet<EventRow[]>(`/events?orderBy=${field}&asc=${options.ascending}`).then(
-            (data) => ({ data, error: null })
-          );
-        },
-      };
+      return makeEventBuilder(new URLSearchParams());
     },
 
-    insert: (row: Omit<EventRow, "id" | "created_at">) => ({
+    insert: (row: Partial<EventRow> & { year: number; name: string }) => ({
       select: () => ({
-        single: () => apiPost<EventRow>("/events", row).then((data) => ({ data, error: null })),
+        single: () =>
+          apiPost<EventRow>("/events", row)
+            .then((data) => {
+              emitTableChange("events", "INSERT", data);
+              return { data, error: null };
+            })
+            .catch((err) => ({ data: null, error: { message: err.message } })),
       }),
     }),
+
+    update: (updates: Partial<EventRow>) => {
+      const builder = makeEventBuilder(new URLSearchParams());
+      builder._updatePayload = updates;
+      return builder;
+    },
+
+    delete: () => {
+      const builder = makeEventBuilder(new URLSearchParams());
+      builder._isDelete = true;
+      return builder;
+    },
   },
 
   guests: {
@@ -323,9 +404,16 @@ export const jsonDb = {
       return makeGuestBuilder(new URLSearchParams());
     },
 
-    insert: (row: Omit<Guest, "id" | "created_at" | "updated_at">) => ({
+    insert: (row: Partial<Guest> & { event_id: string; first_name: string; last_name: string }) => ({
       select: (_cols?: string) => ({
-        single: () => apiPost<Guest>("/guests", row).then((data) => ({ data, error: null })),
+        single: () =>
+          apiPost<Guest>("/guests", row)
+            .then((data) => {
+              emitTableChange("guests", "INSERT", data);
+              emitTableChange("guest_edits", "INSERT", {});
+              return { data, error: null };
+            })
+            .catch((err) => ({ data: null, error: { message: err.message } })),
       }),
     }),
 
@@ -357,17 +445,36 @@ export const jsonDb = {
   },
 };
 
-// ─── No-op Realtime Channel (Supabase Realtime not available in JSON mode) ──
-class MockChannel {
-  on(_event: string, _filter: any, _callback: any) {
-    return this; // chainable
+class LocalRealtimeChannel {
+  private cleanups: (() => void)[] = [];
+
+  on(_type: string, filter: { event?: string; table?: string }, callback: (payload: any) => void) {
+    const table = filter?.table;
+    if (table) {
+      if (!tableSubscribers.has(table)) {
+        tableSubscribers.set(table, new Set());
+      }
+      const handler: TableChangeCallback = (payload) => {
+        if (!filter.event || filter.event === "*" || filter.event === payload.eventType) {
+          callback(payload);
+        }
+      };
+      tableSubscribers.get(table)!.add(handler);
+      this.cleanups.push(() => tableSubscribers.get(table)?.delete(handler));
+    }
+    return this;
   }
+
   subscribe() {
     return this;
   }
+
+  unsubscribe() {
+    this.cleanups.forEach((fn) => fn());
+    this.cleanups = [];
+  }
 }
 
-// JSON Supabase client structure
 export const jsonSupabase = {
   auth: jsonAuth,
 
@@ -379,12 +486,20 @@ export const jsonSupabase = {
     throw new Error(`Unknown table: ${table}`);
   },
 
-  // Realtime — no-op for local JSON mode
   channel(_name: string) {
-    return new MockChannel();
+    return new LocalRealtimeChannel();
   },
 
-  removeChannel(_channel: any) {
-    // no-op
+  removeChannel(channel: any) {
+    if (channel && typeof channel.unsubscribe === "function") {
+      channel.unsubscribe();
+    }
   },
 };
+
+export async function consolidateEventDuplicates(eventId: string, actorId?: string | null) {
+  return apiPost<{ mergedCount: number; remainingCount: number }>("/guests/consolidate", {
+    event_id: eventId,
+    actor_id: actorId ?? null,
+  });
+}
