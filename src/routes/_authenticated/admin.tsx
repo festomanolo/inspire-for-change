@@ -696,7 +696,9 @@ function MinistryAdminPage() {
                 <div className="surface-card space-y-3 p-6">
                   <h2 className="text-base font-bold text-foreground">UUID & data integrity</h2>
                   <p className="text-xs leading-relaxed text-muted-foreground">
-                    Earlier versions created multiple rows when one person attended multiple days. Run consolidation to merge identical attendees into a single canonical UUID record with combined <code className="font-mono-code">days_registered</code>.
+                    Earlier versions created multiple rows when one person attended multiple days.
+                    Run consolidation to merge identical attendees into a single canonical UUID
+                    record with combined <code className="font-mono-code">days_registered</code>.
                   </p>
                   <button
                     type="button"
@@ -741,7 +743,7 @@ function MinistryAdminPage() {
                     <tbody className="divide-y divide-border">
                       {edits.map((e) => {
                         const who = e.edited_by
-                          ? profiles[e.edited_by]?.display_name ?? "Registrar"
+                          ? (profiles[e.edited_by]?.display_name ?? "Registrar")
                           : "System";
                         return (
                           <tr key={e.id} className="hover:bg-secondary/30">
@@ -796,7 +798,9 @@ function MinistryAdminPage() {
           {/* TAB 4: REGISTRAR TEAM */}
           {activeTab === "team" && (
             <div className="fade-in surface-card p-6">
-              <h2 className="mb-1 text-base font-bold text-foreground">Registrar & usher activity</h2>
+              <h2 className="mb-1 text-base font-bold text-foreground">
+                Registrar & usher activity
+              </h2>
               <p className="mb-5 text-xs text-muted-foreground">
                 Registrations, gate check-ins, and record updates handled per team member.
               </p>
@@ -814,10 +818,7 @@ function MinistryAdminPage() {
                     const pct = topTotal > 0 ? Math.round((totalActions / topTotal) * 100) : 100;
 
                     return (
-                      <div
-                        key={id}
-                        className="rounded-xl border border-border bg-secondary/40 p-4"
-                      >
+                      <div key={id} className="rounded-xl border border-border bg-secondary/40 p-4">
                         <div className="mb-2 flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2.5">
                             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary font-mono-code text-xs font-bold text-primary-foreground">
@@ -827,11 +828,17 @@ function MinistryAdminPage() {
                               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                                 <span>{s.name}</span>
                                 {idx === 0 && (
-                                  <Medal size={15} className="text-warm" weight="fill" aria-hidden="true" />
+                                  <Medal
+                                    size={15}
+                                    className="text-warm"
+                                    weight="fill"
+                                    aria-hidden="true"
+                                  />
                                 )}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {s.creates} registered · {s.checkIns} gate check-ins · {s.updates} edits
+                                {s.creates} registered · {s.checkIns} gate check-ins · {s.updates}{" "}
+                                edits
                               </div>
                             </div>
                           </div>
