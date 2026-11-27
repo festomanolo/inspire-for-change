@@ -49,14 +49,7 @@ function writeJson<T>(filePath: string, data: T): void {
 }
 
 function buildEventCode(name: string, year: number): string {
-  const initials = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("")
-    .slice(0, 4);
-  const prefix = initials.length >= 2 ? initials : "IFC";
-  return `${prefix}-${String(year).slice(-2)}`;
+  return buildSuggestedEventCode(name, year);
 }
 
 function normalizeEvent(raw: Partial<EventRow> & { id: string; year: number; name: string; created_at: string }): EventRow {
