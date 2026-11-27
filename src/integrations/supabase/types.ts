@@ -78,6 +78,7 @@ export type Database = {
           changes?: Json
           edited_at?: string
           edited_by?: string | null
+          event_id?: string | null
           guest_id: string
           id?: string
         }
@@ -86,6 +87,7 @@ export type Database = {
           changes?: Json
           edited_at?: string
           edited_by?: string | null
+          event_id?: string | null
           guest_id?: string
           id?: string
         }
@@ -108,27 +110,51 @@ export type Database = {
       }
       guests: {
         Row: {
+          accommodation_zone: string | null
+          age_group: string
+          check_ins: Json
+          church_name: string | null
           created_at: string
           created_by: string | null
           day: number | null
+          days_registered: number[]
+          dietary_medical: string | null
+          email: string | null
           event_id: string
           first_name: string
+          gender: string
+          guardian_name: string | null
+          household_id: string | null
           id: string
+          is_shared_phone: boolean
           last_name: string
           middle_name: string | null
+          ministry_role: string
           origin: string
           phone: string
+          reg_code: string
           status: Database["public"]["Enums"]["guest_status"]
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          accommodation_zone?: string | null
+          age_group?: string
+          check_ins?: Json
+          church_name?: string | null
           created_at?: string
           created_by?: string | null
           day?: number | null
+          days_registered?: number[]
+          dietary_medical?: string | null
+          email?: string | null
           event_id: string
           first_name: string
+          gender?: string
+          guardian_name?: string | null
+          household_id?: string | null
           id?: string
+          is_shared_phone?: boolean
           last_name: string
           middle_name?: string | null
           origin: string
