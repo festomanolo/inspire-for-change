@@ -18,6 +18,7 @@ import {
   Buildings,
   CalendarPlus,
   Campfire,
+  ChartBar,
   CheckCircle,
   Church,
   Clock,
@@ -140,6 +141,12 @@ function DashboardOverview() {
               <span className="rounded-md bg-primary px-2.5 py-1 font-mono-code font-semibold text-primary-foreground">
                 {selected.code}
               </span>
+              {selected.organizer && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-accent/25 bg-accent/10 px-2.5 py-1 font-semibold text-accent">
+                  <Buildings size={13} aria-hidden="true" />
+                  {selected.organizer}
+                </span>
+              )}
               <span className="rounded-md border border-border bg-secondary px-2.5 py-1 font-medium text-secondary-foreground">
                 {EVENT_CATEGORY_LABELS[selected.category] || "Church Event"}
               </span>
