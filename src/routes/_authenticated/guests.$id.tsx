@@ -503,60 +503,105 @@ function GuestDetailPage() {
         </div>
       )}
 
-      <div className="mt-10">
-        <h2 className="text-lg mb-4">Edit history</h2>
-        <div className="surface-card divide-y divide-border">
-          {history.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground text-sm">No history yet.</div>
-          ) : (
-            history.map((h) => {
-              const who = h.edited_by ? profiles[h.edited_by]?.display_name ?? "Unknown" : "System";
+      {/* Audit Trail */}
+      <div className="no-print surface-card p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-bold text-foreground">Verification & edit history</h2>
+          <span className="text-xs text-muted-foreground">{history.length} logged events</span>
+        </div>
+
+        {history.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No audit entries recorded yet.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {history.map((h) => {
+              const actor = h.edited_by ? profiles[h.edited_by]?.display_name ?? "Registrar" : "System";
               return (
-                <div key={h.id} className="p-5">
-                  <div className="flex items-baseline justify-between gap-3 mb-2">
-                    <div className="text-sm">
-                      <span className="font-medium">{who}</span>{" "}
+                <li key={h.id} className="py-3 text-xs first:pt-0 last:pb-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div>
+                      <span className="font-semibold text-foreground">{actor}</span>{" "}
                       <span className="text-muted-foreground">
-                        {h.action === "create" ? "registered this guest" : "made changes"}
+                        {h.action === "create"
+                          ? "issued registration pass"
+                          : h.action === "check_in"
+                            ? "updated gate check-in"
+                            : h.action === "merge"
+                              ? "consolidated multi-day records"
+                              : "updated profile fields"}
                       </span>
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <span className="text-muted-foreground">
                       {formatDistanceToNow(new Date(h.edited_at), { addSuffix: true })}
-                    </div>
+                    </span>
                   </div>
-                  {h.action === "update" && (
-                    <ul className="text-sm space-y-1 mt-2">
+                  {h.action === "update" && h.changes && (
+                    <ul className="mt-1.5 space-y-1 pl-3 text-muted-foreground">
                       {Object.entries(h.changes as Record<string, { from: unknown; to: unknown }>).map(
-                        ([k, v]) => (
-                          <li key={k} className="text-muted-foreground">
-                            <span className="capitalize text-foreground">{k.replace("_", " ")}</span>:{" "}
-                            <span className="line-through">{String(v.from ?? "—")}</span> →{" "}
-                            <span className="text-foreground">{String(v.to ?? "—")}</span>
+                        ([field, delta]) => (
+                          <li key={field}>
+                            <span className="font-medium text-foreground">{field.replace(/_/g, " ")}</span>:{" "}
+                            <span className="line-through">{JSON.stringify(delta?.from ?? "—")}</span> →{" "}
+                            <span className="text-foreground">{JSON.stringify(delta?.to ?? "—")}</span>
                           </li>
                         ),
                       )}
                     </ul>
                   )}
-                </div>
+                </li>
               );
-            })
-          )}
-        </div>
+            })}
+          </ul>
+        )}
+      </div>
+
+      {/* Danger Zone */}
+      <div className="no-print flex justify-end">
+        {!confirmRemove ? (
+          <button
+            type="button"
+            onClick={() => setConfirmRemove(true)}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-destructive/25 bg-destructive/8 px-4 py-2 text-xs font-semibold text-destructive hover:bg-destructive/15"
+          >
+            <Trash size={14} aria-hidden="true" />
+            Delete attendee record
+          </button>
+        ) : (
+          <div className="flex items-center gap-2 rounded-full border border-destructive/30 bg-destructive/10 px-4 py-1.5 text-xs">
+            <span className="font-semibold text-destructive">Confirm permanent deletion?</span>
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="cursor-pointer rounded-full bg-destructive px-3 py-1 font-semibold text-destructive-foreground"
+            >
+              Yes, delete
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmRemove(false)}
+              className="cursor-pointer rounded-full bg-card px-3 py-1 font-semibold text-foreground"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function InfoItem({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div>
-      <dt className="text-xs uppercase tracking-wider text-muted-foreground">{label}</dt>
-      <dd className="mt-1">{value}</dd>
+    <div className="min-w-0">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className={`mt-0.5 truncate text-sm font-medium text-foreground ${mono ? "font-mono-code" : ""}`} title={value}>
+        {value}
+      </dd>
     </div>
   );
 }
 
-function Input({
+function EditField({
   label,
   value,
   onChange,
@@ -567,11 +612,11 @@ function Input({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium mb-2">{label}</label>
+      <label className="mb-1.5 block text-xs font-semibold text-foreground">{label}</label>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:outline-none focus:ring-2 focus:ring-ring"
+        className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm text-foreground"
       />
     </div>
   );
