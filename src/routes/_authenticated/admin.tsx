@@ -632,7 +632,17 @@ function MinistryAdminPage() {
               {/* All Church Events List + Data Hygiene */}
               <div className="space-y-5 lg:col-span-5">
                 <div className="surface-card p-6">
-                  <h2 className="mb-3 text-base font-bold text-foreground">All church events</h2>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h2 className="text-base font-bold text-foreground">All events</h2>
+                    <button
+                      type="button"
+                      onClick={() => openEventStudio({ mode: "create" })}
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground"
+                    >
+                      <CalendarPlus size={13} weight="bold" aria-hidden="true" />
+                      Add event
+                    </button>
+                  </div>
                   <div className="space-y-2">
                     {events.map((ev) => {
                       const isCurrent = ev.id === selected.id;
@@ -647,13 +657,16 @@ function MinistryAdminPage() {
                               : "border-border bg-secondary/40 text-foreground hover:bg-secondary"
                           }`}
                         >
-                          <div>
-                            <span className="block text-sm font-semibold">{ev.name}</span>
-                            <span className="text-muted-foreground">
+                          <div className="min-w-0 pr-2">
+                            <span className="block truncate text-sm font-semibold">{ev.name}</span>
+                            <span className="block truncate text-muted-foreground">
+                              {ev.organizer ? `${ev.organizer} · ` : ""}
                               {EVENT_CATEGORY_LABELS[ev.category] || "Event"} · {ev.total_days || 3} days
                             </span>
                           </div>
-                          <span className="font-mono-code font-semibold text-accent">{ev.code}</span>
+                          <span className="shrink-0 font-mono-code font-semibold text-accent">
+                            {ev.code}
+                          </span>
                         </button>
                       );
                     })}
