@@ -62,7 +62,17 @@ function notifyAuthListeners(event: string, session: JsonSession | null) {
   authListeners.forEach((listener) => listener(event, session));
 }
 
-// JSON Auth API
+// Local broadcast bus so open tabs/components react immediately to mutations in JSON mode
+type TableChangeCallback = (payload: { eventType: string; new: any; old: any }) => void;
+const tableSubscribers = new Map<string, Set<TableChangeCallback>>();
+
+function emitTableChange(table: string, eventType: string, newRow: any, oldRow: any = null) {
+  const subs = tableSubscribers.get(table);
+  if (subs) {
+    subs.forEach((cb) => cb({ eventType, new: newRow, old: oldRow }));
+  }
+}
+
 export const jsonAuth = {
   getSession: async () => {
     try {
@@ -118,7 +128,6 @@ export const jsonAuth = {
 
   onAuthStateChange: (callback: AuthListener) => {
     authListeners.add(callback);
-    // Immediately call with current session
     jsonAuth.getSession().then(({ data }) => callback("INITIAL_SESSION", data.session));
 
     return {
@@ -130,11 +139,6 @@ export const jsonAuth = {
     };
   },
 };
-
-// ─── Fluent Query Builder ────────────────────────────────────────────────────
-// Mimics the Supabase client's chainable API for the tables used in this app.
-
-type QueryResult<T> = Promise<{ data: T | null; error: { message: string } | null }>;
 
 function makeGuestEditBuilder(params: URLSearchParams) {
   const builder: any = {
@@ -160,7 +164,6 @@ function makeGuestEditBuilder(params: URLSearchParams) {
       try {
         const qs = this._params.toString() ? "?" + this._params.toString() : "";
         const raw = await apiGet<any[]>(`/guest-edits${qs}`);
-        // Attach guest data if a join was requested (simplified: fetch separately)
         const joinGuest = this._params.get("_joinGuest") === "true";
         let data: any[] = raw;
         if (joinGuest) {
@@ -170,9 +173,71 @@ function makeGuestEditBuilder(params: URLSearchParams) {
             guest: guests.find((g) => g.id === e.guest_id) ?? null,
           }));
         }
-        // Apply limit client-side
         const limit = this._params.get("limit");
         if (limit) data = data.slice(0, parseInt(limit, 10));
+        resolve({ data, error: null });
+      } catch (err: any) {
+        if (reject) reject(err);
+        else resolve({ data: null, error: { message: err.message } });
+      }
+    },
+  };
+  return builder;
+}
+
+function makeEventBuilder(params: URLSearchParams) {
+  const builder: any = {
+    _params: params,
+    _updatePayload: null as any,
+    _isDelete: false,
+
+    eq(field: string, value: string) {
+      this._params.set(field, value);
+      return this;
+    },
+
+    order(field: string, options?: { ascending?: boolean }) {
+      this._params.set("orderBy", field);
+      this._params.set("asc", String(options?.ascending !== false));
+      return this;
+    },
+
+    select() {
+      return this;
+    },
+
+    single() {
+      const id = this._params.get("id");
+      if (this._updatePayload !== null) {
+        return apiPut<EventRow>(`/events/${id}`, this._updatePayload)
+          .then((data) => {
+            emitTableChange("events", "UPDATE", data);
+            return { data, error: null };
+          })
+          .catch((err) => ({ data: null, error: { message: err.message } }));
+      }
+      return Promise.resolve({ data: null, error: { message: "Unsupported single query" } });
+    },
+
+    async then(resolve: (v: any) => void, reject?: (e: any) => void) {
+      try {
+        if (this._isDelete) {
+          const id = this._params.get("id");
+          await apiDelete(`/events/${id}`);
+          emitTableChange("events", "DELETE", null, { id });
+          resolve({ error: null });
+          return;
+        }
+        if (this._updatePayload !== null) {
+          const id = this._params.get("id");
+          const data = await apiPut<EventRow>(`/events/${id}`, this._updatePayload);
+          emitTableChange("events", "UPDATE", data);
+          resolve({ data, error: null });
+          return;
+        }
+        const orderBy = this._params.get("orderBy") || "year";
+        const asc = this._params.get("asc") !== "false";
+        const data = await apiGet<EventRow[]>(`/events?orderBy=${orderBy}&asc=${asc}`);
         resolve({ data, error: null });
       } catch (err: any) {
         if (reject) reject(err);
@@ -190,10 +255,8 @@ function makeGuestBuilder(params: URLSearchParams) {
     _isDelete: false,
 
     eq(field: string, value: string) {
-      // If this is an update/delete, the first eq is the primary filter
-      if (this._updatePayload !== null) {
-        if (!this._params.has("id")) this._params.set("id", value);
-        // additional eq calls are just ignored (optimistic concurrency)
+      if (this._updatePayload !== null || this._isDelete) {
+        if (!this._params.has("id") && field === "id") this._params.set("id", value);
         return this;
       }
       this._params.set(field, value);
@@ -222,7 +285,11 @@ function makeGuestBuilder(params: URLSearchParams) {
       const id = this._params.get("id");
       if (this._updatePayload !== null) {
         return apiPut<Guest>(`/guests/${id}`, this._updatePayload)
-          .then((data) => ({ data, error: null }))
+          .then((data) => {
+            emitTableChange("guests", "UPDATE", data);
+            emitTableChange("guest_edits", "INSERT", {});
+            return { data, error: null };
+          })
           .catch((err) => ({ data: null, error: { message: err.message } }));
       }
       return apiGet<Guest>(`/guests/${id}`)
@@ -231,8 +298,6 @@ function makeGuestBuilder(params: URLSearchParams) {
     },
 
     select(_cols?: string) {
-      // after an update: return this builder (for .single() chaining)
-      if (this._updatePayload !== null) return this;
       return this;
     },
 
