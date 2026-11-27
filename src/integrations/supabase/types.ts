@@ -39,6 +39,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           name: string
+          organizer?: string | null
           start_date?: string | null
           status?: string
           subtitle?: string | null
