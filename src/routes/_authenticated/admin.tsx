@@ -426,7 +426,8 @@ function MinistryAdminPage() {
                     <Sparkle size={18} className="text-warm" weight="fill" aria-hidden="true" />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    First-time visitors, visiting guests, and attendees with medical or dietary notes.
+                    First-time visitors, visiting guests, and attendees with medical or dietary
+                    notes.
                   </p>
 
                   {pastoralFollowUps.length === 0 ? (
@@ -482,7 +483,9 @@ function MinistryAdminPage() {
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-xs font-semibold text-foreground">Year</label>
+                      <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                        Year
+                      </label>
                       <input
                         type="number"
                         value={eventConfig.year}
@@ -554,7 +557,9 @@ function MinistryAdminPage() {
                       </label>
                       <input
                         value={eventConfig.organizer}
-                        onChange={(e) => setEventConfig({ ...eventConfig, organizer: e.target.value })}
+                        onChange={(e) =>
+                          setEventConfig({ ...eventConfig, organizer: e.target.value })
+                        }
                         placeholder="e.g. Kingdom Youth, Grace Parish, or custom host"
                         className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm"
                       />
@@ -579,7 +584,10 @@ function MinistryAdminPage() {
                         <select
                           value={eventConfig.status}
                           onChange={(e) =>
-                            setEventConfig({ ...eventConfig, status: e.target.value as EventStatus })
+                            setEventConfig({
+                              ...eventConfig,
+                              status: e.target.value as EventStatus,
+                            })
                           }
                           className="w-full rounded-xl border border-border bg-input px-2.5 py-2.5 text-sm"
                         >
@@ -672,7 +680,8 @@ function MinistryAdminPage() {
                             <span className="block truncate text-sm font-semibold">{ev.name}</span>
                             <span className="block truncate text-muted-foreground">
                               {ev.organizer ? `${ev.organizer} · ` : ""}
-                              {EVENT_CATEGORY_LABELS[ev.category] || "Event"} · {ev.total_days || 3} days
+                              {EVENT_CATEGORY_LABELS[ev.category] || "Event"} · {ev.total_days || 3}{" "}
+                              days
                             </span>
                           </div>
                           <span className="shrink-0 font-mono-code font-semibold text-accent">
