@@ -229,7 +229,10 @@ function AuthPage() {
               )}
 
               <div>
-                <label htmlFor="auth-email" className="mb-1.5 block text-xs font-semibold text-foreground">
+                <label
+                  htmlFor="auth-email"
+                  className="mb-1.5 block text-xs font-semibold text-foreground"
+                >
                   Email address
                 </label>
                 <input
@@ -245,7 +248,10 @@ function AuthPage() {
               </div>
 
               <div>
-                <label htmlFor="auth-password" className="mb-1.5 block text-xs font-semibold text-foreground">
+                <label
+                  htmlFor="auth-password"
+                  className="mb-1.5 block text-xs font-semibold text-foreground"
+                >
                   Password
                 </label>
                 <div className="relative">
@@ -272,7 +278,10 @@ function AuthPage() {
               </div>
 
               {error && (
-                <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs font-medium text-destructive">
+                <div
+                  role="alert"
+                  className="rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs font-medium text-destructive"
+                >
                   {error}
                 </div>
               )}
@@ -289,7 +298,13 @@ function AuthPage() {
                 disabled={loading}
                 className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:opacity-95 disabled:opacity-50"
               >
-                <span>{loading ? "Authenticating…" : mode === "signin" ? "Sign in to workspace" : "Create staff account"}</span>
+                <span>
+                  {loading
+                    ? "Authenticating…"
+                    : mode === "signin"
+                      ? "Sign in to workspace"
+                      : "Create staff account"}
+                </span>
                 <ArrowRight size={16} weight="bold" aria-hidden="true" />
               </button>
             </form>
