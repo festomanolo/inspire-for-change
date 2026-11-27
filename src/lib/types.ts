@@ -120,7 +120,7 @@ export const MINISTRY_ROLE_LABELS: Record<MinistryRole, string> = {
   visitor: "Visiting guest",
   first_timer: "First-time visitor",
   pastor: "Pastor / Clergy",
-  leader: "Ministry leader",
+  leader: "Ministry / Team leader",
   choir_media: "Choir & Media",
   volunteer: "Usher / Steward",
 };
