@@ -258,10 +258,10 @@ export const authHandlers = {
   signIn: (params: { email: string; password: string }) => {
     const { email } = params;
     const profiles = readJson<Profile[]>(FILES.profiles, []);
-    const profile = profiles.find((p) => p.email === email);
+    const profile = profiles.find((p) => p.email.toLowerCase() === email.toLowerCase());
 
     if (!profile) {
-      throw new Error("Invalid login credentials");
+      throw new Error("Invalid email or password. Create a staff account if you are new.");
     }
 
     const user = {
@@ -273,7 +273,7 @@ export const authHandlers = {
     const session = {
       user,
       access_token: `token_${profile.id}`,
-      expires_at: Date.now() + 3600000,
+      expires_at: Date.now() + 86400000 * 7,
     };
 
     writeJson(FILES.session, session);
@@ -288,35 +288,68 @@ export const authHandlers = {
   },
 };
 
-// Database API handlers
+const TRACKED_GUEST_FIELDS: (keyof Guest)[] = [
+  "first_name",
+  "middle_name",
+  "last_name",
+  "gender",
+  "age_group",
+  "origin",
+  "church_name",
+  "ministry_role",
+  "phone",
+  "is_shared_phone",
+  "guardian_name",
+  "status",
+  "accommodation_zone",
+  "dietary_medical",
+  "days_registered",
+];
+
 export const dbHandlers = {
   profiles: {
-    getAll: () => {
-      return readJson<Profile[]>(FILES.profiles, []);
-    },
+    getAll: () => readJson<Profile[]>(FILES.profiles, []),
 
     getByField: (field: string, value: string) => {
       const profiles = readJson<Profile[]>(FILES.profiles, []);
       return profiles.find((p) => (p as any)[field] === value) || null;
     },
+
+    update: (id: string, updates: Partial<Profile>) => {
+      const profiles = readJson<Profile[]>(FILES.profiles, []);
+      const idx = profiles.findIndex((p) => p.id === id);
+      if (idx === -1) throw new Error("Profile not found");
+      profiles[idx] = { ...profiles[idx], ...updates };
+      writeJson(FILES.profiles, profiles);
+      return profiles[idx];
+    },
   },
 
   events: {
     getAll: (orderBy: string, ascending: boolean) => {
-      const events = readJson<EventRow[]>(FILES.events, []);
-      return events.sort((a, b) => {
+      const events = loadNormalizedEvents();
+      return [...events].sort((a, b) => {
         const aVal = (a as any)[orderBy] ?? "";
         const bVal = (b as any)[orderBy] ?? "";
         const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
-        return ascending ? cmp : -cmp;
+        if (cmp !== 0) return ascending ? cmp : -cmp;
+        return a.created_at < b.created_at ? 1 : -1;
       });
     },
 
-    create: (row: Omit<EventRow, "id" | "created_at">) => {
-      const events = readJson<EventRow[]>(FILES.events, []);
-      const newEvent: EventRow = {
-        id: crypto.randomUUID(),
+    create: (row: Partial<EventRow> & { year: number; name: string }) => {
+      const events = loadNormalizedEvents();
+      const baseCode = row.code?.trim() || buildEventCode(row.name, row.year);
+      let uniqueCode = baseCode;
+      let suffix = 2;
+      while (events.some((e) => e.code.toUpperCase() === uniqueCode.toUpperCase())) {
+        uniqueCode = `${baseCode}-${suffix++}`;
+      }
+
+      const newEvent = normalizeEvent({
         ...row,
+        id: crypto.randomUUID(),
+        code: uniqueCode,
         created_at: new Date().toISOString(),
       };
       events.push(newEvent);
