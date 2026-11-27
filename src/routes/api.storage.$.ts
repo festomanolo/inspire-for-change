@@ -80,14 +80,9 @@ export const Route = createFileRoute("/api/storage/$")({
             const orderBy = searchParams.get("orderBy") || "edited_at";
             const asc = searchParams.get("asc") !== "false";
 
-            let edits;
-            if (field) {
-              const value = searchParams.get(field) || "";
-              edits = dbHandlers.guestEdits.getByField(field, value, orderBy, asc);
-            } else {
-              // No filter → return all edits (sorted)
-              edits = dbHandlers.guestEdits.getAll(orderBy, asc);
-            }
+            const edits = field
+              ? dbHandlers.guestEdits.getByField(field, searchParams.get(field) || "", orderBy, asc)
+              : dbHandlers.guestEdits.getAll(orderBy, asc);
             return new Response(JSON.stringify(edits), {
               headers: { "Content-Type": "application/json" },
             });
@@ -143,6 +138,13 @@ export const Route = createFileRoute("/api/storage/$")({
             });
           }
 
+          if (splat === "guests/consolidate") {
+            const result = dbHandlers.guests.consolidateDuplicates(body.event_id, body.actor_id);
+            return new Response(JSON.stringify(result), {
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+
           if (splat === "guests") {
             const result = dbHandlers.guests.create(body);
             return new Response(JSON.stringify(result), {
@@ -174,8 +176,17 @@ export const Route = createFileRoute("/api/storage/$")({
 
           const guestIdMatch = splat.match(/^guests\/([^/]+)$/);
           if (guestIdMatch) {
-            const id = guestIdMatch[1];
+            const id = decodeURIComponent(guestIdMatch[1]);
             const result = dbHandlers.guests.update(id, body);
+            return new Response(JSON.stringify(result), {
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+
+          const eventIdMatch = splat.match(/^events\/([^/]+)$/);
+          if (eventIdMatch) {
+            const id = decodeURIComponent(eventIdMatch[1]);
+            const result = dbHandlers.events.update(id, body);
             return new Response(JSON.stringify(result), {
               headers: { "Content-Type": "application/json" },
             });
@@ -197,8 +208,17 @@ export const Route = createFileRoute("/api/storage/$")({
 
           const guestIdMatch = splat.match(/^guests\/([^/]+)$/);
           if (guestIdMatch) {
-            const id = guestIdMatch[1];
+            const id = decodeURIComponent(guestIdMatch[1]);
             dbHandlers.guests.delete(id);
+            return new Response(JSON.stringify({ success: true }), {
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+
+          const eventIdMatch = splat.match(/^events\/([^/]+)$/);
+          if (eventIdMatch) {
+            const id = decodeURIComponent(eventIdMatch[1]);
+            dbHandlers.events.delete(id);
             return new Response(JSON.stringify({ success: true }), {
               headers: { "Content-Type": "application/json" },
             });
