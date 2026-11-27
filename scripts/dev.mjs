@@ -21,6 +21,8 @@ function findAvailablePort(startPort) {
     probe.on("error", (err) => {
       if (err && err.code === "EADDRINUSE") {
         resolve(findAvailablePort(startPort + 1));
+      } else {
+        reject(err);
 
 function prefixStream(stream, label, color) {
   let buffer = "";
