@@ -251,133 +251,391 @@ function MinistryAdminPage() {
           </div>
           <h1 className="mt-1">{selected.name} administration</h1>
         </div>
-        <p style={{ fontSize: "0.85rem", color: "var(--color-muted-foreground)", marginTop: "2px" }}>
-          Full visibility into all guest registrations and staff actions for <strong>{selected.name}</strong>
-        </p>
-      </div>
 
-      {/* Event selector note */}
-      <div style={{
-        padding: "12px 16px", borderRadius: "12px", fontSize: "0.82rem",
-        background: "oklch(0.55 0.22 258 / 0.06)", border: "1px solid oklch(0.55 0.22 258 / 0.15)",
-        color: "var(--color-accent)", display: "flex", alignItems: "center", gap: "8px",
-      }}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        Viewing data for <strong style={{ marginLeft: "4px" }}>{selected.name}</strong>. Use the event selector in the header to switch years.
-      </div>
-
-      {/* Tab bar */}
-      <div style={{ display: "flex", gap: "4px", background: "var(--color-secondary)", borderRadius: "12px", padding: "4px", width: "fit-content" }}>
-        {(["overview", "activity", "staff"] as const).map((tab) => (
+        {duplicateRowCount > 0 && (
           <button
-            key={tab}
-            id={`admin-tab-${tab}`}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              padding: "8px 18px", borderRadius: "9px", fontSize: "0.82rem", fontWeight: 500,
-              border: "none", cursor: "pointer", transition: "all 0.15s ease",
-              background: activeTab === tab ? "var(--color-card)" : "transparent",
-              color: activeTab === tab ? "var(--color-foreground)" : "var(--color-muted-foreground)",
-              boxShadow: activeTab === tab ? "var(--shadow-soft)" : "none",
-              textTransform: "capitalize",
-            }}
+            type="button"
+            disabled={merging}
+            onClick={handleConsolidateDuplicates}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-warm/40 bg-warm/12 px-4 py-2 text-xs font-semibold text-warm hover:bg-warm/18"
           >
-            {tab === "overview" ? "📊 Overview" : tab === "activity" ? "📋 Activity Log" : "👥 Staff"}
+            <ArrowsMerge size={15} weight="bold" aria-hidden="true" />
+            {merging
+              ? "Consolidating…"
+              : `Merge ${duplicateRowCount} legacy duplicate row${duplicateRowCount > 1 ? "s" : ""}`}
           </button>
-        ))}
+        )}
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="flex flex-wrap gap-1.5 rounded-2xl border border-border bg-card p-1.5 w-fit">
+        {(
+          [
+            { id: "analytics", label: "Ministry intelligence", Icon: ChartBar },
+            { id: "events", label: "Events & settings", Icon: CalendarBlank },
+            { id: "audit", label: `Audit trail (${edits.length})`, Icon: ClockCounterClockwise },
+            { id: "team", label: "Registrar team", Icon: UsersThree },
+          ] as const
+        ).map((tab) => {
+          const Icon = tab.Icon;
+          const active = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              id={`admin-tab-${tab.id}`}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold ${
+                active
+                  ? "bg-primary text-primary-foreground shadow-2xs"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+              }`}
+            >
+              <Icon size={15} weight={active ? "fill" : "regular"} aria-hidden="true" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "60px", color: "var(--color-muted-foreground)" }}>
-          Loading admin data…
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="h-44 animate-pulse rounded-2xl bg-secondary" />
+          ))}
         </div>
       ) : (
         <>
-          {/* Overview tab */}
-          {activeTab === "overview" && (
+          {/* TAB 1: MINISTRY INTELLIGENCE */}
+          {activeTab === "analytics" && (
             <div className="fade-in space-y-6">
-              {/* Stat grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "12px" }}>
-                {[
-                  { label: "Total Guests", value: totalGuests, color: "oklch(0.55 0.22 258)", bg: "oklch(0.55 0.22 258 / 0.08)" },
-                  { label: "Camping", value: campers, color: "oklch(0.52 0.19 150)", bg: "oklch(0.52 0.19 150 / 0.08)" },
-                  { label: "Not Camping", value: notCampers, color: "oklch(0.6 0.01 250)", bg: "transparent" },
-                  { label: "Day 1", value: day1, color: "oklch(0.65 0.2 290)", bg: "oklch(0.65 0.2 290 / 0.08)" },
-                  { label: "Day 2", value: day2, color: "oklch(0.6 0.2 320)", bg: "oklch(0.6 0.2 320 / 0.08)" },
-                  { label: "Day 3", value: day3, color: "oklch(0.58 0.22 27)", bg: "oklch(0.58 0.22 27 / 0.08)" },
-                  { label: "Total Actions", value: totalEdits, color: "oklch(0.55 0.18 220)", bg: "oklch(0.55 0.18 220 / 0.08)" },
-                  { label: "Registrations", value: creates, color: "oklch(0.52 0.19 150)", bg: "oklch(0.52 0.19 150 / 0.08)" },
-                  { label: "Updates", value: updates, color: "oklch(0.65 0.18 60)", bg: "oklch(0.65 0.18 60 / 0.08)" },
-                ].map((s, i) => (
-                  <div key={i} className={`surface-card stagger-${Math.min(i + 1, 6)}`} style={{ padding: "18px", background: s.bg, borderColor: `${s.color}30` }}>
-                    <div style={{ fontSize: "0.75rem", color: "var(--color-muted-foreground)", marginBottom: "6px" }}>{s.label}</div>
-                    <div style={{ fontSize: "2rem", fontWeight: 700, color: s.color, letterSpacing: "-0.04em", lineHeight: 1 }}>
-                      {s.value}
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+                {/* Gender & Demographics Card */}
+                <div className="surface-card space-y-4 p-6">
+                  <h2 className="text-base font-bold text-foreground">Gender & demographics</h2>
+                  <div className="space-y-3 text-xs">
+                    {[
+                      { label: "Male attendees", count: maleCount },
+                      { label: "Female attendees", count: femaleCount },
+                      ...(unspecifiedGenderCount > 0
+                        ? [{ label: "Legacy (gender unrecorded)", count: unspecifiedGenderCount }]
+                        : []),
+                    ].map((item) => {
+                      const pct = guests.length ? Math.round((item.count / guests.length) * 100) : 0;
+                      return (
+                        <div key={item.label} className="space-y-1">
+                          <div className="flex justify-between">
+                            <span className="font-medium text-foreground">{item.label}</span>
+                            <span className="font-mono-code text-muted-foreground">
+                              {item.count} ({pct}%)
+                            </span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                            <div
+                              className="h-full rounded-full bg-primary"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="border-t border-border pt-4">
+                    <h3 className="mb-2.5 text-xs font-semibold text-muted-foreground">
+                      Age group distribution
+                    </h3>
+                    <div className="space-y-2 text-xs">
+                      {(Object.keys(AGE_GROUP_LABELS) as AgeGroup[]).map((ag) => (
+                        <div key={ag} className="flex items-center justify-between">
+                          <span className="text-foreground">{AGE_GROUP_LABELS[ag]}</span>
+                          <span className="rounded bg-secondary px-2 py-0.5 font-mono-code font-semibold">
+                            {ageStats[ag]}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
 
-              {/* All events summary */}
-              <div className="surface-card" style={{ padding: "20px" }}>
-                <h2 style={{ marginBottom: "14px" }}>All Event Years</h2>
-                {events.length === 0 ? (
-                  <p style={{ color: "var(--color-muted-foreground)", fontSize: "0.85rem" }}>No events found.</p>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {events.map((ev) => (
-                      <div key={ev.id} style={{
-                        display: "flex", alignItems: "center", justifyContent: "space-between",
-                        padding: "10px 14px", borderRadius: "10px", background: "var(--color-secondary)",
-                        ...(ev.id === selected.id ? { border: "1.5px solid oklch(0.55 0.22 258 / 0.3)" } : {}),
-                      }}>
-                        <span style={{ fontSize: "0.88rem", fontWeight: ev.id === selected.id ? 600 : 400 }}>
-                          {ev.name}
-                          {ev.id === selected.id && <span style={{ fontSize: "0.7rem", color: "var(--color-accent)", marginLeft: "8px" }}>● current</span>}
-                        </span>
-                      </div>
-                    ))}
+                {/* Parishes & Delegations Represented */}
+                <div className="surface-card space-y-4 p-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold text-foreground">Parishes & origins</h2>
+                    <Church size={18} className="text-accent" aria-hidden="true" />
                   </div>
-                )}
+                  {churchRankings.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No parish data yet.</p>
+                  ) : (
+                    <ul className="divide-y divide-border text-xs">
+                      {churchRankings.map(([label, count]) => (
+                        <li key={label} className="flex items-center justify-between py-2.5">
+                          <span className="truncate pr-3 font-medium text-foreground">{label}</span>
+                          <span className="shrink-0 rounded-full bg-accent/12 px-2.5 py-0.5 font-mono-code font-semibold text-accent">
+                            {count}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Pastoral Follow-up & Special Welfare */}
+                <div className="surface-card space-y-4 p-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold text-foreground">Pastoral & welfare care</h2>
+                    <Sparkle size={18} className="text-warm" weight="fill" aria-hidden="true" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    First-time visitors, visiting guests, and attendees with medical or dietary notes.
+                  </p>
+
+                  {pastoralFollowUps.length === 0 ? (
+                    <div className="rounded-xl bg-secondary/50 p-4 text-xs text-muted-foreground">
+                      No visitors or special welfare notes recorded yet.
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-border text-xs">
+                      {pastoralFollowUps.slice(0, 6).map((g) => (
+                        <li key={g.id} className="py-2.5">
+                          <Link
+                            to="/guests/$id"
+                            params={{ id: g.id }}
+                            className="font-semibold text-foreground no-underline hover:text-accent"
+                          >
+                            {formatFullName(g)} ({g.reg_code})
+                          </Link>
+                          <div className="mt-0.5 text-muted-foreground">
+                            {MINISTRY_ROLE_LABELS[g.ministry_role]}
+                            {g.dietary_medical ? ` · Note: ${g.dietary_medical}` : ""}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
-          {/* Activity Log tab */}
-          {activeTab === "activity" && (
-            <div className="fade-in surface-card" style={{ overflow: "hidden" }}>
-              <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--color-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <h2 style={{ margin: 0 }}>Full Activity Log</h2>
-                <span style={{ fontSize: "0.78rem", color: "var(--color-muted-foreground)" }}>
-                  {edits.length} action{edits.length !== 1 ? "s" : ""}
+          {/* TAB 2: EVENTS & SANCTUARY SETTINGS */}
+          {activeTab === "events" && (
+            <div className="fade-in grid grid-cols-1 gap-6 lg:grid-cols-12">
+              <div className="surface-card p-6 lg:col-span-7">
+                <h2 className="mb-1 text-base font-bold text-foreground">
+                  Configure "{selected.name}" ({selected.code})
+                </h2>
+                <p className="mb-5 text-xs text-muted-foreground">
+                  Update total days, sanctuary venue, capacity target, or dormitory settings.
+                </p>
+
+                <form onSubmit={handleSaveEventConfig} className="space-y-4">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="sm:col-span-2">
+                      <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                        Event name
+                      </label>
+                      <input
+                        required
+                        value={eventConfig.name}
+                        onChange={(e) => setEventConfig({ ...eventConfig, name: e.target.value })}
+                        className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-foreground">Year</label>
+                      <input
+                        type="number"
+                        value={eventConfig.year}
+                        onChange={(e) =>
+                          setEventConfig({ ...eventConfig, year: Number(e.target.value) })
+                        }
+                        className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 font-mono-code text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                        Category
+                      </label>
+                      <select
+                        value={eventConfig.category}
+                        onChange={(e) =>
+                          setEventConfig({
+                            ...eventConfig,
+                            category: e.target.value as EventCategory,
+                          })
+                        }
+                        className="w-full rounded-xl border border-border bg-input px-3 py-2.5 text-sm"
+                      >
+                        {Object.entries(EVENT_CATEGORY_LABELS).map(([k, lbl]) => (
+                          <option key={k} value={k}>
+                            {lbl}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                        Total days
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={14}
+                        value={eventConfig.total_days}
+                        onChange={(e) =>
+                          setEventConfig({ ...eventConfig, total_days: Number(e.target.value) })
+                        }
+                        className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 font-mono-code text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                        Target capacity
+                      </label>
+                      <input
+                        type="number"
+                        min={10}
+                        value={eventConfig.capacity}
+                        onChange={(e) =>
+                          setEventConfig({ ...eventConfig, capacity: Number(e.target.value) })
+                        }
+                        className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 font-mono-code text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                      Venue / Sanctuary location
+                    </label>
+                    <input
+                      value={eventConfig.venue}
+                      onChange={(e) => setEventConfig({ ...eventConfig, venue: e.target.value })}
+                      className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                      Theme / Scripture subtitle
+                    </label>
+                    <input
+                      value={eventConfig.subtitle}
+                      onChange={(e) => setEventConfig({ ...eventConfig, subtitle: e.target.value })}
+                      className="w-full rounded-xl border border-border bg-input px-3.5 py-2.5 text-sm"
+                    />
+                  </div>
+
+                  <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border bg-secondary/50 px-3.5 py-2.5 text-xs font-medium text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={eventConfig.camping_enabled}
+                      onChange={(e) =>
+                        setEventConfig({ ...eventConfig, camping_enabled: e.target.checked })
+                      }
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span>Enable camping & dormitory assignments</span>
+                  </label>
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      disabled={savingEvent}
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground hover:opacity-95 disabled:opacity-50"
+                    >
+                      <FloppyDisk size={15} aria-hidden="true" />
+                      {savingEvent ? "Saving…" : "Save event settings"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* All Church Events List + Data Hygiene */}
+              <div className="space-y-5 lg:col-span-5">
+                <div className="surface-card p-6">
+                  <h2 className="mb-3 text-base font-bold text-foreground">All church events</h2>
+                  <div className="space-y-2">
+                    {events.map((ev) => {
+                      const isCurrent = ev.id === selected.id;
+                      return (
+                        <button
+                          key={ev.id}
+                          type="button"
+                          onClick={() => select(ev.id)}
+                          className={`flex w-full cursor-pointer items-center justify-between rounded-xl border px-4 py-3 text-left text-xs ${
+                            isCurrent
+                              ? "border-primary bg-primary/8 font-semibold text-foreground"
+                              : "border-border bg-secondary/40 text-foreground hover:bg-secondary"
+                          }`}
+                        >
+                          <div>
+                            <span className="block text-sm font-semibold">{ev.name}</span>
+                            <span className="text-muted-foreground">
+                              {EVENT_CATEGORY_LABELS[ev.category] || "Event"} · {ev.total_days || 3} days
+                            </span>
+                          </div>
+                          <span className="font-mono-code font-semibold text-accent">{ev.code}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="surface-card space-y-3 p-6">
+                  <h2 className="text-base font-bold text-foreground">UUID & data integrity</h2>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Earlier versions created multiple rows when one person attended multiple days. Run consolidation to merge identical attendees into a single canonical UUID record with combined <code className="font-mono-code">days_registered</code>.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={merging}
+                    onClick={handleConsolidateDuplicates}
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted"
+                  >
+                    <ArrowsMerge size={15} className="text-accent" aria-hidden="true" />
+                    {merging ? "Scanning…" : "Verify & merge duplicate multi-day rows"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: AUDIT LOG */}
+          {activeTab === "audit" && (
+            <div className="fade-in surface-card overflow-hidden">
+              <div className="flex items-center justify-between border-b border-border px-6 py-4">
+                <h2 className="text-base font-bold text-foreground">Complete audit trail</h2>
+                <span className="font-mono-code text-xs text-muted-foreground">
+                  {edits.length} actions
                 </span>
               </div>
 
               {edits.length === 0 ? (
-                <div style={{ padding: "48px", textAlign: "center", color: "var(--color-muted-foreground)", fontSize: "0.88rem" }}>
-                  No activity recorded yet.
+                <div className="p-12 text-center text-xs text-muted-foreground">
+                  No audit events logged yet for this church event.
                 </div>
               ) : (
-                <div style={{ overflowX: "auto" }}>
-                  {/* Desktop table */}
-                  <table className="hidden md:table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-xs">
                     <thead>
-                      <tr style={{ background: "var(--color-secondary)" }}>
-                        {["Staff member", "Action", "Guest", "Origin", "Day", "Time"].map((h) => (
-                          <th key={h} style={{ padding: "10px 16px", fontSize: "0.72rem", fontWeight: 700,
-                            textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--color-muted-foreground)",
-                            textAlign: "left", borderBottom: "1px solid var(--color-border)" }}>
-                            {h}
-                          </th>
-                        ))}
+                      <tr className="border-b border-border bg-secondary/60 text-muted-foreground">
+                        <th className="px-5 py-3 font-semibold">Registrar</th>
+                        <th className="px-5 py-3 font-semibold">Action</th>
+                        <th className="px-5 py-3 font-semibold">Attendee</th>
+                        <th className="px-5 py-3 font-semibold">Summary</th>
+                        <th className="px-5 py-3 font-semibold">Timestamp</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {edits.map((e, i) => {
-                        const who = e.edited_by ? (profiles[e.edited_by]?.display_name ?? "Unknown") : "Unknown";
-                        const isCreate = e.action === "create";
+                    <tbody className="divide-y divide-border">
+                      {edits.map((e) => {
+                        const who = e.edited_by
+                          ? profiles[e.edited_by]?.display_name ?? "Registrar"
+                          : "System";
                         return (
                           <tr key={e.id} style={{
                             borderBottom: "1px solid var(--color-border)",
