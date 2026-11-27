@@ -1,8 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { EventRow } from "@/lib/types";
+import type { EventCategory, EventRow, EventStatus } from "@/lib/types";
 
 const STORAGE_KEY = "selectedEventId";
+const EVENT_BUS = "ifc:selected-event-changed";
+
+export type CreateChurchEventInput = {
+  name: string;
+  year: number;
+  code?: string;
+  category?: EventCategory;
+  subtitle?: string | null;
+  venue?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  total_days?: number;
+  capacity?: number | null;
+  camping_enabled?: boolean;
+  status?: EventStatus;
+};
 
 export function useEvents() {
   const [events, setEvents] = useState<EventRow[]>([]);
@@ -11,17 +27,27 @@ export function useEvents() {
   );
   const [loading, setLoading] = useState(true);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     const { data } = await supabase.from("events").select("*").order("year", { ascending: false });
-    const rows = (data as EventRow[]) ?? [];
+    const rows = ((data as unknown as EventRow[]) ?? []).map((ev) => ({
+      ...ev,
+      code: ev.code || `IFC-${String(ev.year).slice(-2)}`,
+      category: ev.category || "conference",
+      total_days: ev.total_days || 3,
+      camping_enabled: ev.camping_enabled !== false,
+      status: ev.status || "active",
+    }));
     setEvents(rows);
-    if (rows.length && (!selectedId || !rows.find((r) => r.id === selectedId))) {
-      const def = rows[0].id;
-      setSelectedId(def);
-      localStorage.setItem(STORAGE_KEY, def);
-    }
+    setSelectedId((prev) => {
+      if (rows.length && (!prev || !rows.find((r) => r.id === prev))) {
+        const def = rows[0].id;
+        if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, def);
+        return def;
+      }
+      return prev;
+    });
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     refresh();
