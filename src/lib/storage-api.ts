@@ -55,7 +55,7 @@ function buildEventCode(name: string, year: number): string {
 function normalizeEvent(raw: Partial<EventRow> & { id: string; year: number; name: string; created_at: string }): EventRow {
   return {
     id: raw.id,
-    code: raw.code || buildEventCode(raw.name, raw.year),
+    code: raw.code?.trim() || buildEventCode(raw.name, raw.year),
     year: raw.year,
     name: raw.name,
     category: raw.category || "conference",
