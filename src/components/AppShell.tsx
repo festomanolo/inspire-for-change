@@ -186,31 +186,102 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
             {selected && (
               <div className="flex items-center gap-1" ref={switcherRef}>
                 <div className="relative">
-                  <select
+                  <button
                     id="event-year-selector"
-                    aria-label="Select active church event"
-                    value={selected.id}
-                    onChange={(e) => {
-                      if (e.target.value === "__new__") {
-                        setEventModalOpen(true);
-                      } else {
-                        select(e.target.value);
-                      }
-                    }}
-                    className="h-9 max-w-[165px] cursor-pointer appearance-none truncate rounded-full border border-border bg-secondary pr-8 pl-3.5 text-xs font-semibold text-secondary-foreground hover:border-accent/40 sm:max-w-[220px]"
+                    type="button"
+                    aria-expanded={switcherOpen}
+                    aria-haspopup="listbox"
+                    onClick={() => setSwitcherOpen(!switcherOpen)}
+                    className="inline-flex h-9 max-w-[175px] cursor-pointer items-center gap-2 rounded-full border border-border bg-secondary px-3 text-xs font-semibold text-secondary-foreground hover:border-accent/40 sm:max-w-[240px]"
                   >
-                    {events.map((ev) => (
-                      <option key={ev.id} value={ev.id}>
-                        {ev.name} ({ev.year})
-                      </option>
-                    ))}
-                    <option value="__new__">+ New church event…</option>
-                  </select>
-                  <CaretDown
-                    size={13}
-                    className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground"
-                    aria-hidden="true"
-                  />
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(selected.status || "active")}`}
+                      aria-hidden="true"
+                    />
+                    <span className="font-mono-code text-[11px] text-accent">{selected.code}</span>
+                    <span className="truncate">{selected.name}</span>
+                    <CaretDown size={12} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+                  </button>
+
+                  {switcherOpen && (
+                    <div
+                      role="listbox"
+                      aria-label="Switch active event"
+                      className="scale-in surface-elevated absolute top-[calc(100%+8px)] right-0 z-50 w-80 overflow-hidden p-1.5"
+                    >
+                      <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                        <span className="text-[11px] font-semibold text-muted-foreground">
+                          Switch event workspace ({events.length})
+                        </span>
+                        <Link
+                          to="/manager"
+                          onClick={() => setSwitcherOpen(false)}
+                          className="text-[11px] font-semibold text-accent no-underline hover:underline"
+                        >
+                          Manage all
+                        </Link>
+                      </div>
+
+                      <div className="max-h-64 overflow-y-auto py-1">
+                        {events.map((ev) => {
+                          const isCurrent = ev.id === selected.id;
+                          return (
+                            <button
+                              key={ev.id}
+                              type="button"
+                              role="option"
+                              aria-selected={isCurrent}
+                              onClick={() => {
+                                select(ev.id);
+                                setSwitcherOpen(false);
+                              }}
+                              className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs ${
+                                isCurrent
+                                  ? "bg-primary/10 font-semibold text-foreground"
+                                  : "text-foreground hover:bg-secondary"
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusDotClass(ev.status || "active")}`}
+                                    aria-hidden="true"
+                                  />
+                                  <span className="truncate font-semibold">{ev.name}</span>
+                                </div>
+                                <div className="mt-0.5 truncate pl-3 text-[11px] text-muted-foreground">
+                                  {ev.organizer ? `${ev.organizer} · ` : ""}
+                                  {EVENT_STATUS_LABELS[ev.status || "active"]} · {ev.year}
+                                </div>
+                              </div>
+                              <div className="flex shrink-0 items-center gap-1.5">
+                                <span className="font-mono-code text-[11px] font-semibold text-accent">
+                                  {ev.code}
+                                </span>
+                                {isCurrent && (
+                                  <Check size={13} className="text-primary" weight="bold" aria-hidden="true" />
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="border-t border-border pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSwitcherOpen(false);
+                            openEventStudio({ mode: "create" });
+                          }}
+                          className="flex w-full cursor-pointer items-center gap-2 rounded-xl bg-primary/10 px-3 py-2 text-left text-xs font-semibold text-primary hover:bg-primary/15"
+                        >
+                          <CalendarPlus size={15} weight="bold" aria-hidden="true" />
+                          <span>Create new event (any program/host)</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <button
