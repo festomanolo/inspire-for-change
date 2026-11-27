@@ -246,88 +246,145 @@ function GuestsDirectory() {
             <Printer size={15} className="text-accent" aria-hidden="true" />
             Print roster
           </button>
+          <Link
+            to="/register"
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground no-underline hover:opacity-95"
+          >
+            <UserPlus size={15} weight="bold" aria-hidden="true" />
+            Register attendee
+          </Link>
         </div>
       </div>
 
-      {/* Search & filters */}
-      <div className="no-print surface-card" style={{ padding: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
-        <input
-          id="guests-search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="🔍  Search by name, origin, or phone…"
-          style={{
-            width: "100%", padding: "10px 14px", borderRadius: "12px",
-            background: "var(--color-input)", border: "1.5px solid var(--color-border)",
-            fontSize: "0.88rem", color: "var(--color-foreground)",
-          }}
-        />
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          {/* Status filter pills */}
-          <div style={{ display: "flex", gap: "4px", background: "var(--color-secondary)", borderRadius: "10px", padding: "3px" }}>
-            {(["all", "camping", "not_camping"] as Filter[]).map((f) => (
+      {/* Multi-faceted Filter Bar */}
+      <div className="no-print surface-card space-y-3 p-4">
+        <div className="relative">
+          <MagnifyingGlass
+            size={17}
+            className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <input
+            id="guests-search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by badge ID (IFC-26-0001), UUID, name, church, city, dorm, or phone…"
+            aria-label="Search directory"
+            className="w-full rounded-xl border border-border bg-input py-2.5 pr-4 pl-10 text-sm text-foreground"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Gender Filter */}
+          <div className="flex rounded-xl bg-secondary p-1">
+            {(["all", "male", "female"] as GenderFilter[]).map((gf) => (
               <button
-                key={f}
-                id={`filter-${f}`}
-                onClick={() => setFilter(f)}
-                style={{
-                  padding: "6px 12px", borderRadius: "8px", fontSize: "0.78rem",
-                  border: "none", cursor: "pointer", fontWeight: filter === f ? 600 : 400,
-                  background: filter === f ? "var(--color-card)" : "transparent",
-                  color: filter === f ? "var(--color-foreground)" : "var(--color-muted-foreground)",
-                  boxShadow: filter === f ? "var(--shadow-soft)" : "none",
-                  transition: "all 0.15s ease", whiteSpace: "nowrap",
-                }}
+                key={gf}
+                type="button"
+                onClick={() => setGenderFilter(gf)}
+                className={`cursor-pointer rounded-lg px-3 py-1 text-xs font-medium capitalize ${
+                  genderFilter === gf
+                    ? "bg-card font-semibold text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
-                {f === "all" ? "All" : f === "camping" ? "⛺ Camping" : "☀️ Day visitors"}
+                {gf === "all" ? "All genders" : gf}
               </button>
             ))}
           </div>
+
+          {/* Accommodation Filter */}
+          <div className="flex rounded-xl bg-secondary p-1">
+            {(["all", "camping", "not_camping"] as AccomFilter[]).map((af) => (
+              <button
+                key={af}
+                id={`filter-${af}`}
+                type="button"
+                onClick={() => setAccomFilter(af)}
+                className={`cursor-pointer rounded-lg px-3 py-1 text-xs font-medium ${
+                  accomFilter === af
+                    ? "bg-card font-semibold text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {af === "all" ? "All lodging" : af === "camping" ? "Campers" : "Day commuters"}
+              </button>
+            ))}
+          </div>
+
+          {/* Day Filter */}
+          <select
+            aria-label="Filter by day"
+            value={dayFilter}
+            onChange={(e) => setDayFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
+            className="cursor-pointer rounded-xl border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-foreground"
+          >
+            <option value="all">All days</option>
+            {dayList.map((d) => (
+              <option key={d} value={d}>
+                Day {d}
+              </option>
+            ))}
+          </select>
+
           {/* Sort */}
           <select
             id="guests-sort"
+            aria-label="Sort order"
             value={sort}
-            onChange={(e) => setSort(e.target.value as Sort)}
-            style={{
-              padding: "6px 12px", borderRadius: "10px", fontSize: "0.78rem",
-              background: "var(--color-secondary)", border: "1.5px solid var(--color-border)",
-              cursor: "pointer", color: "var(--color-foreground)", fontWeight: 500,
-            }}
+            onChange={(e) => setSort(e.target.value as SortOrder)}
+            className="cursor-pointer rounded-xl border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-foreground"
           >
-            <option value="newest">Newest first</option>
-            <option value="name">A → Z</option>
+            <option value="newest">Newest registered</option>
+            <option value="code">Badge code</option>
+            <option value="name">Name (A–Z)</option>
           </select>
         </div>
       </div>
 
-      {/* Table — desktop */}
-      <div className="surface-card hidden md:block" style={{ overflow: "hidden" }}>
-        <div style={{
-          display: "grid", gridTemplateColumns: "3fr 2fr 2fr 60px 130px 110px",
-          padding: "10px 20px", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase",
-          letterSpacing: "0.07em", color: "var(--color-muted-foreground)",
-          borderBottom: "1px solid var(--color-border)", background: "var(--color-secondary)",
-        }}>
-          <div>Name</div><div>Origin</div><div>Phone</div><div>Day</div><div>Status</div><div style={{ textAlign: "right" }}>Actions</div>
+      {/* Desktop Roster Table */}
+      <div className="surface-card hidden overflow-hidden lg:block">
+        <div className="grid grid-cols-12 gap-3 border-b border-border bg-secondary/70 px-5 py-3 text-xs font-semibold text-muted-foreground">
+          <div className="col-span-3">Attendee & badge ID</div>
+          <div className="col-span-2">Demographics</div>
+          <div className="col-span-3">Church & contact</div>
+          <div className="col-span-2">Days & check-in</div>
+          <div className="col-span-1">Lodging</div>
+          <div className="no-print col-span-1 text-right">Actions</div>
         </div>
 
         {loading ? (
-          <div style={{ padding: "60px", textAlign: "center", color: "var(--color-muted-foreground)" }}>Loading…</div>
+          <div className="space-y-3 p-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-14 animate-pulse rounded-xl bg-secondary" />
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
-          <div style={{ padding: "60px", textAlign: "center", color: "var(--color-muted-foreground)" }}>No guests found.</div>
+          <div className="px-6 py-16 text-center">
+            <p className="text-sm font-semibold text-foreground">No attendees match your filters</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Adjust your search terms or register a new person for {selected?.name}.
+            </p>
+          </div>
         ) : (
-          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+          <ul className="divide-y divide-border">
             {filtered.map((g) => (
-              <li key={g.id} style={{ borderBottom: "1px solid var(--color-border)" }}>
+              <li key={g.id} className="px-5 py-3.5 hover:bg-secondary/35">
                 {editingId === g.id ? (
-                  <div style={{
-                    display: "grid", gridTemplateColumns: "3fr 2fr 2fr 60px 130px 110px",
-                    padding: "12px 20px", gap: "8px", alignItems: "center",
-                    background: "oklch(0.55 0.22 258 / 0.04)",
-                  }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <input value={editForm.first_name || ""} onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })} style={inputCls} placeholder="First name" />
-                      <input value={editForm.last_name || ""} onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })} style={inputCls} placeholder="Last name" />
+                  <div className="grid grid-cols-12 items-center gap-2.5">
+                    <div className="col-span-3 flex gap-1.5">
+                      <input
+                        value={editForm.first_name || ""}
+                        onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                        placeholder="First"
+                        className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs"
+                      />
+                      <input
+                        value={editForm.last_name || ""}
+                        onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                        placeholder="Last"
+                        className="w-full rounded-lg border border-border bg-input px-2.5 py-1.5 text-xs"
+                      />
                     </div>
                     <input value={editForm.origin || ""} onChange={(e) => setEditForm({ ...editForm, origin: e.target.value })} style={inputCls} placeholder="Origin" />
                     <input value={editForm.phone || ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={inputCls} placeholder="Phone" />
