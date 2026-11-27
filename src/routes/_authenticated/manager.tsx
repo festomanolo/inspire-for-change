@@ -26,15 +26,7 @@ import {
 } from "@/lib/types";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   ArrowsMerge,
   ArrowUpRight,
@@ -85,14 +77,7 @@ function statusBadgeClass(status: EventStatus): string {
 }
 
 function ManagerDashboardPage() {
-  const {
-    events,
-    selected,
-    select,
-    updateEvent,
-    duplicateEvent,
-    deleteEvent,
-  } = useEvents();
+  const { events, selected, select, updateEvent, duplicateEvent, deleteEvent } = useEvents();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -134,8 +119,16 @@ function ManagerDashboardPage() {
       .channel("manager-portfolio-sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "events" }, loadPortfolioData)
       .on("postgres_changes", { event: "*", schema: "public", table: "guests" }, loadPortfolioData)
-      .on("postgres_changes", { event: "*", schema: "public", table: "guest_edits" }, loadPortfolioData)
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, loadPortfolioData)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "guest_edits" },
+        loadPortfolioData,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        loadPortfolioData,
+      )
       .subscribe();
 
     return () => {
@@ -217,7 +210,8 @@ function ManagerDashboardPage() {
     const totalRegistered = allGuests.length;
     const totalCapacity = events.reduce((sum, e) => sum + (e.capacity || 500), 0);
     const totalArrived = allGuests.filter((g) => Object.keys(g.check_ins ?? {}).length > 0).length;
-    const arrivalRate = totalRegistered > 0 ? Math.round((totalArrived / totalRegistered) * 100) : 0;
+    const arrivalRate =
+      totalRegistered > 0 ? Math.round((totalArrived / totalRegistered) * 100) : 0;
     const totalCampers = allGuests.filter((g) => g.status === "camping").length;
     const totalVisitors = allGuests.filter(
       (g) => g.ministry_role === "first_timer" || g.ministry_role === "visitor",
@@ -395,8 +389,8 @@ function ManagerDashboardPage() {
     try {
       await updateEvent(ev.id, { status: nextStatus });
       toast.success(`Marked "${ev.name}" as ${EVENT_STATUS_LABELS[nextStatus]}`);
-    } catch (err: any) {
-      toast.error(err?.message || "Could not update event status");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not update event status");
     }
   };
 
@@ -404,8 +398,8 @@ function ManagerDashboardPage() {
     try {
       const cloned = await duplicateEvent(ev);
       toast.success(`Cloned event as "${cloned.name}" (${cloned.code})`);
-    } catch (err: any) {
-      toast.error(err?.message || "Could not duplicate event");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not duplicate event");
     }
   };
 
@@ -417,8 +411,8 @@ function ManagerDashboardPage() {
       await deleteEvent(target.id);
       await loadPortfolioData();
       toast.success(`Deleted event "${target.name}"`);
-    } catch (err: any) {
-      toast.error(err?.message || "Could not delete event");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not delete event");
     }
   };
 
