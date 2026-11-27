@@ -83,6 +83,7 @@ function DashboardOverview() {
         }
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "guests" }, load)
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "guests" }, load)
       .on("postgres_changes", { event: "*", schema: "public", table: "guest_edits" }, load)
       .subscribe();
 
@@ -92,103 +93,291 @@ function DashboardOverview() {
     };
   }, [selected]);
 
-  if (!selected) return <div style={{ color: "var(--color-muted-foreground)" }}>Loading…</div>;
+  if (!selected) {
+    return <div className="py-16 text-center text-sm text-muted-foreground">Loading sanctuary overview…</div>;
+  }
 
   const total = guests.length;
-  const campers = guests.filter((g) => g.status === "camping").length;
-  const notCampers = total - campers;
-  const day1 = guests.filter((g) => g.day === 1).length;
-  const day2 = guests.filter((g) => g.day === 2).length;
-  const day3 = guests.filter((g) => g.day === 3).length;
-  const recent = guests.slice(0, 5);
+  const capacity = selected.capacity || 500;
+  const capacityPct = Math.min(100, Math.round((total / Math.max(capacity, 1)) * 100));
+
+  const maleCount = guests.filter((g) => g.gender === "male").length;
+  const femaleCount = guests.filter((g) => g.gender === "female").length;
+  const campers = guests.filter((g) => g.status === "camping");
+  const maleCampers = campers.filter((g) => g.gender === "male").length;
+  const femaleCampers = campers.filter((g) => g.gender === "female").length;
+
+  const firstTimers = guests.filter(
+    (g) => g.ministry_role === "first_timer" || g.ministry_role === "visitor",
+  ).length;
+  const checkedInAnyDay = guests.filter((g) => Object.keys(g.check_ins ?? {}).length > 0).length;
+
+  const uniqueChurches = new Set(
+    guests.map((g) => (g.church_name || "").trim().toLowerCase()).filter(Boolean),
+  ).size;
+
+  const totalDays = selected.total_days || 3;
+  const dayBreakdown = Array.from({ length: totalDays }, (_, idx) => {
+    const dayNum = idx + 1;
+    const registered = guests.filter(
+      (g) => g.days_registered?.includes(dayNum) || g.day === dayNum,
+    ).length;
+    const arrived = guests.filter((g) => isCheckedInForDay(g, dayNum)).length;
+    return { dayNum, registered, arrived };
+  });
+
+  const recentGuests = guests.slice(0, 5);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-      {/* Header */}
-      <div className="slide-up">
-        <p style={{ fontSize: "0.8rem", color: "var(--color-muted-foreground)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-          {selected.name}
-        </p>
-        <h1 style={{ marginTop: "2px" }}>Overview</h1>
-      </div>
+    <div className="space-y-6">
+      {/* Sanctuary Event Command Hero (Double-Bezel Asymmetric Split) */}
+      <section className="bezel-shell slide-up">
+        <div className="bezel-core grid grid-cols-1 gap-6 p-6 sm:p-8 lg:grid-cols-12 lg:items-center">
+          <div className="space-y-3 lg:col-span-7">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="rounded-md bg-primary px-2.5 py-1 font-mono-code font-semibold text-primary-foreground">
+                {selected.code}
+              </span>
+              <span className="rounded-md border border-border bg-secondary px-2.5 py-1 font-medium text-secondary-foreground">
+                {EVENT_CATEGORY_LABELS[selected.category] || "Church Event"}
+              </span>
+              {selected.venue && (
+                <span className="inline-flex items-center gap-1 text-muted-foreground">
+                  <MapPin size={13} className="text-accent" aria-hidden="true" />
+                  {selected.venue}
+                </span>
+              )}
+            </div>
 
-      {/* Quick action */}
-      <Link
-        to="/register"
-        id="quick-register-btn"
-        style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "16px 20px", borderRadius: "16px", textDecoration: "none",
-          background: "linear-gradient(135deg, oklch(0.28 0.06 255) 0%, oklch(0.55 0.22 258) 100%)",
-          color: "white", boxShadow: "0 4px 20px oklch(0.45 0.2 268 / 0.3)",
-          transition: "transform 0.15s ease, box-shadow 0.15s ease",
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 8px 24px oklch(0.45 0.2 268 / 0.35)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 20px oklch(0.45 0.2 268 / 0.3)"; }}
-      >
-        <div>
-          <div style={{ fontWeight: 700, fontSize: "1rem", marginBottom: "2px" }}>Register a new guest</div>
-          <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>Quickly add guests to {selected.name}</div>
+            <div>
+              <h1 className="text-foreground">{selected.name}</h1>
+              {selected.subtitle && (
+                <p className="mt-1.5 max-w-[60ch] text-sm text-muted-foreground">
+                  {selected.subtitle}
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 pt-2">
+              <Link
+                to="/register"
+                id="quick-register-btn"
+                className="group inline-flex items-center gap-2.5 rounded-full bg-primary py-2.5 pr-3 pl-5 text-sm font-semibold text-primary-foreground no-underline shadow-xs hover:opacity-95"
+              >
+                <span>Register attendee</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-foreground/15 transition-transform group-hover:translate-x-0.5">
+                  <UserPlus size={15} weight="bold" aria-hidden="true" />
+                </span>
+              </Link>
+
+              <Link
+                to="/checkin"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-5 py-2.5 text-sm font-semibold text-secondary-foreground no-underline hover:bg-muted"
+              >
+                <QrCode size={17} className="text-accent" aria-hidden="true" />
+                <span>Gate check-in desk</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* Right Column: Live Sanctuary Capacity & Arrival Telemetry */}
+          <div className="rounded-2xl border border-border bg-surface p-5 lg:col-span-5">
+            <div className="flex items-baseline justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Unique registered souls</p>
+                <div className="mt-1 flex items-baseline gap-2">
+                  <span className="font-mono-code text-4xl font-extrabold tracking-tight text-foreground">
+                    {total}
+                  </span>
+                  <span className="font-mono-code text-xs text-muted-foreground">
+                    / {capacity} target
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="inline-flex items-center gap-1 rounded-full bg-success/12 px-2.5 py-1 font-mono-code text-xs font-semibold text-success">
+                  <CheckCircle size={13} weight="fill" aria-hidden="true" />
+                  {checkedInAnyDay} arrived
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-border/70">
+              <div
+                className="h-full rounded-full bg-primary transition-[width] duration-300"
+                style={{ width: `${capacityPct}%` }}
+              />
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-3.5 text-xs">
+              <div>
+                <span className="block text-muted-foreground">Gender split</span>
+                <span className="font-mono-code font-semibold text-foreground">
+                  {maleCount}M · {femaleCount}F
+                </span>
+              </div>
+              <div>
+                <span className="block text-muted-foreground">Parishes</span>
+                <span className="font-mono-code font-semibold text-foreground">
+                  {uniqueChurches || 1} represented
+                </span>
+              </div>
+              <div>
+                <span className="block text-muted-foreground">Visitors</span>
+                <span className="font-mono-code font-semibold text-warm">{firstTimers} guests</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div style={{ fontSize: "1.4rem", opacity: 0.9 }}>→</div>
-      </Link>
+      </section>
 
-      {/* Stats row 1 */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
-        <StatCard label="Total guests" value={total} emoji="👥" accentColor="oklch(0.55 0.22 258)" />
-        <StatCard label="Camping" value={campers} emoji="⛺" accentColor="oklch(0.52 0.19 150)" accent />
-        <StatCard label="Day visitors" value={notCampers} emoji="☀️" accentColor="oklch(0.6 0.01 250)" />
-      </div>
-
-      {/* Stats row 2 */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
-        <StatCard label="Day 1" value={day1} emoji="1️⃣" accentColor="oklch(0.65 0.2 290)" />
-        <StatCard label="Day 2" value={day2} emoji="2️⃣" accentColor="oklch(0.6 0.2 320)" />
-        <StatCard label="Day 3" value={day3} emoji="3️⃣" accentColor="oklch(0.58 0.22 27)" />
-      </div>
-
-      {/* Recent registrations + edits */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "16px" }}>
-        {/* Recent registrations */}
-        <div className="surface-card" style={{ padding: "20px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-            <h2 style={{ margin: 0 }}>Recent registrations</h2>
-            <Link to="/guests" style={{ fontSize: "0.8rem", color: "var(--color-accent)", textDecoration: "none", fontWeight: 500 }}>
-              View all →
+      {/* Asymmetric Bento Row: Daily Schedule Matrix + Camp & Dormitory Allocation */}
+      <section className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        {/* Multi-Day Attendance & Check-in Schedule (7 cols) */}
+        <div className="surface-card flex flex-col justify-between p-6 lg:col-span-7">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-foreground">Multi-day sanctuary schedule</h2>
+              <p className="text-xs text-muted-foreground">
+                Registered headcount vs verified gate arrivals across {totalDays} days
+              </p>
+            </div>
+            <Link
+              to="/checkin"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-accent no-underline hover:underline"
+            >
+              Open gate desk
+              <ArrowRight size={13} aria-hidden="true" />
             </Link>
           </div>
-          {recent.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "32px 0", color: "var(--color-muted-foreground)", fontSize: "0.85rem" }}>
-              <div style={{ fontSize: "2rem", marginBottom: "8px" }}>🎉</div>
-              No guests yet — be the first to register!
+
+          <div className="space-y-3.5">
+            {dayBreakdown.map(({ dayNum, registered, arrived }) => {
+              const barPct = total > 0 ? Math.min(100, Math.round((registered / total) * 100)) : 0;
+              const arrivedPct =
+                registered > 0 ? Math.min(100, Math.round((arrived / registered) * 100)) : 0;
+
+              return (
+                <div key={dayNum} className="rounded-xl border border-border bg-secondary/40 p-3.5">
+                  <div className="mb-2 flex items-center justify-between text-xs">
+                    <span className="font-semibold text-foreground">Day {dayNum} session</span>
+                    <div className="flex items-center gap-3 font-mono-code">
+                      <span className="text-muted-foreground">{registered} registered</span>
+                      <span className="font-semibold text-success">{arrived} checked in</span>
+                    </div>
+                  </div>
+                  <div className="relative h-2 w-full overflow-hidden rounded-full bg-border/60">
+                    <div
+                      className="h-full rounded-full bg-accent/35"
+                      style={{ width: `${barPct}%` }}
+                    />
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full bg-primary"
+                      style={{ width: `${(barPct * arrivedPct) / 100}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Gender & Camp Dormitory Logistics (5 cols) */}
+        <div className="surface-card flex flex-col justify-between p-6 lg:col-span-5">
+          <div>
+            <div className="flex items-center justify-between">
+              <h2 className="text-foreground">Camp & dormitory logistics</h2>
+              <Campfire size={18} className="text-warm" weight="duotone" aria-hidden="true" />
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Live gender-segregated lodging & hospitality breakdown
+            </p>
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-border bg-surface p-4">
+                <span className="text-xs text-muted-foreground">Men's sanctuary dorms</span>
+                <div className="mt-1 font-mono-code text-2xl font-bold text-foreground">
+                  {maleCampers}
+                </div>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  of {maleCount} male attendees
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-border bg-surface p-4">
+                <span className="text-xs text-muted-foreground">Women's sanctuary dorms</span>
+                <div className="mt-1 font-mono-code text-2xl font-bold text-foreground">
+                  {femaleCampers}
+                </div>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  of {femaleCount} female attendees
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between rounded-xl border border-border bg-secondary/50 px-4 py-3 text-xs">
+            <div className="flex items-center gap-2">
+              <Sparkle size={15} className="text-warm" weight="fill" aria-hidden="true" />
+              <span className="font-medium text-foreground">
+                {campers.length} total campers · {total - campers.length} day commuters
+              </span>
+            </div>
+            <Link to="/guests" className="font-semibold text-accent no-underline hover:underline">
+              Roster
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Bottom Feed: Recent Badges Issued + Live Registrar Audit Stream */}
+      <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {/* Recent Registrations */}
+        <div className="surface-card p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <UsersThree size={18} className="text-accent" aria-hidden="true" />
+              <h2 className="text-foreground">Recent badges issued</h2>
+            </div>
+            <Link
+              to="/guests"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-accent no-underline hover:underline"
+            >
+              Full directory
+              <ArrowRight size={13} aria-hidden="true" />
+            </Link>
+          </div>
+
+          {recentGuests.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border py-12 text-center">
+              <IdentificationBadge size={28} className="mx-auto mb-2 text-muted-foreground" aria-hidden="true" />
+              <p className="text-sm font-semibold text-foreground">No attendees registered yet</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Issue your first attendee badge pass to populate live sanctuary telemetry.
+              </p>
             </div>
           ) : (
-            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "2px" }}>
-              {recent.map((g) => (
+            <ul className="divide-y divide-border">
+              {recentGuests.map((g) => (
                 <li key={g.id}>
                   <Link
                     to="/guests/$id"
                     params={{ id: g.id }}
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "10px 12px", margin: "0 -12px", borderRadius: "12px",
-                      textDecoration: "none", color: "inherit", transition: "background 0.12s ease",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-secondary)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    className="flex items-center justify-between gap-3 rounded-xl px-2 py-3 text-foreground no-underline hover:bg-secondary/60"
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
-                      <div style={{
-                        width: "32px", height: "32px", borderRadius: "50%", flexShrink: 0,
-                        background: "linear-gradient(135deg, oklch(0.55 0.22 258 / 0.15), oklch(0.65 0.2 290 / 0.15))",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: "0.7rem", fontWeight: 700, color: "var(--color-accent)",
-                      }}>
-                        {g.first_name[0]}{g.last_name[0]}
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary font-mono-code text-xs font-bold text-foreground">
+                        {g.first_name[0]}
+                        {g.last_name[0]}
                       </div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: "0.88rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {[g.first_name, g.middle_name, g.last_name].filter(Boolean).join(" ")}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-sm font-semibold text-foreground">
+                            {formatFullName(g)}
+                          </span>
+                          <span className="font-mono-code text-xs font-medium text-accent">
+                            {g.reg_code}
+                          </span>
                         </div>
                         <div style={{ fontSize: "0.75rem", color: "var(--color-muted-foreground)" }}>{g.origin}</div>
                       </div>
