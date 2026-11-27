@@ -12,5 +12,15 @@ export default defineConfig({
   server: {
     port: 8080,
     host: true,
+    proxy: {
+      "/api/storage": {
+        target: backendTarget,
+        changeOrigin: true,
+      },
+      "/api/health": {
+        target: backendTarget,
+        changeOrigin: true,
+      },
+    },
   },
 });
