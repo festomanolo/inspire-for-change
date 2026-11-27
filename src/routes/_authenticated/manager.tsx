@@ -684,7 +684,11 @@ function ManagerDashboardPage() {
                             fontSize: "12px",
                           }}
                         />
-                        <Bar dataKey="Registered" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
+                        <Bar
+                          dataKey="Registered"
+                          fill="var(--color-primary)"
+                          radius={[6, 6, 0, 0]}
+                        />
                         <Bar dataKey="Arrived" fill="var(--color-accent)" radius={[6, 6, 0, 0]} />
                         <Bar dataKey="Campers" fill="var(--color-warm)" radius={[6, 6, 0, 0]} />
                       </BarChart>
@@ -710,12 +714,17 @@ function ManagerDashboardPage() {
 
                         <div>
                           {selected.organizer && (
-                            <p className="text-xs font-semibold text-accent">{selected.organizer}</p>
+                            <p className="text-xs font-semibold text-accent">
+                              {selected.organizer}
+                            </p>
                           )}
-                          <h2 className="mt-0.5 text-xl font-bold text-foreground">{selected.name}</h2>
+                          <h2 className="mt-0.5 text-xl font-bold text-foreground">
+                            {selected.name}
+                          </h2>
                           <p className="mt-1 text-xs text-muted-foreground">
                             {EVENT_CATEGORY_LABELS[selected.category] || "Event"} ·{" "}
-                            {selected.total_days || 3} day{(selected.total_days || 3) > 1 ? "s" : ""}
+                            {selected.total_days || 3} day
+                            {(selected.total_days || 3) > 1 ? "s" : ""}
                             {selected.venue ? ` · ${selected.venue}` : ""}
                           </p>
                         </div>
@@ -807,7 +816,10 @@ function ManagerDashboardPage() {
                       female: 0,
                     };
                     const cap = ev.capacity || 500;
-                    const utilPct = Math.min(100, Math.round((m.registered / Math.max(cap, 1)) * 100));
+                    const utilPct = Math.min(
+                      100,
+                      Math.round((m.registered / Math.max(cap, 1)) * 100),
+                    );
                     const isSelected = selected?.id === ev.id;
 
                     return (
@@ -907,7 +919,8 @@ function ManagerDashboardPage() {
                     </span>
                     <span className="text-sm font-bold text-foreground">Add another event</span>
                     <span className="max-w-[26ch] text-xs text-muted-foreground">
-                      Set up a new conference, camp, seminar, outreach, or partner organization event
+                      Set up a new conference, camp, seminar, outreach, or partner organization
+                      event
                     </span>
                   </button>
                 </div>
@@ -966,7 +979,9 @@ function ManagerDashboardPage() {
               <div className="surface-card overflow-hidden">
                 {filteredEvents.length === 0 ? (
                   <div className="p-12 text-center">
-                    <p className="text-sm font-semibold text-foreground">No events match your filter</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      No events match your filter
+                    </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Clear your search or launch a new event with the Event Studio.
                     </p>
