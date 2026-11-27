@@ -266,16 +266,33 @@ function MinistryAdminPage() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            disabled={merging}
-            onClick={handleConsolidateDuplicates}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-warm/40 bg-warm/12 px-4 py-2 text-xs font-semibold text-warm hover:bg-warm/18"
+            onClick={() => openEventStudio({ mode: "create" })}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
           >
-            <ArrowsMerge size={15} weight="bold" aria-hidden="true" />
-            {merging
-              ? "Consolidating…"
-              : `Merge ${duplicateRowCount} legacy duplicate row${duplicateRowCount > 1 ? "s" : ""}`}
+            <CalendarPlus size={15} weight="bold" aria-hidden="true" />
+            New event
           </button>
-        )}
+          <Link
+            to="/manager"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground no-underline hover:bg-secondary"
+          >
+            <ChartBar size={15} className="text-accent" aria-hidden="true" />
+            Manager dashboard
+          </Link>
+          {duplicateRowCount > 0 && (
+            <button
+              type="button"
+              disabled={merging}
+              onClick={handleConsolidateDuplicates}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-warm/40 bg-warm/12 px-4 py-2 text-xs font-semibold text-warm hover:bg-warm/18"
+            >
+              <ArrowsMerge size={15} weight="bold" aria-hidden="true" />
+              {merging
+                ? "Consolidating…"
+                : `Merge ${duplicateRowCount} legacy duplicate row${duplicateRowCount > 1 ? "s" : ""}`}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Navigation Tabs */}
