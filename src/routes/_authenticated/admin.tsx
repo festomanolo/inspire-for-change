@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import {
   ArrowsMerge,
   CalendarBlank,
+  CalendarPlus,
   ChartBar,
   Church,
   ClockCounterClockwise,
@@ -53,8 +54,11 @@ function MinistryAdminPage() {
 
   const [eventConfig, setEventConfig] = useState({
     name: "",
+    organizer: "",
+    code: "",
     year: 2026,
     category: "conference" as EventCategory,
+    status: "active" as EventStatus,
     total_days: 3,
     capacity: 500,
     venue: "",
