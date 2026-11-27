@@ -1,75 +1,98 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useMatch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEvents } from "@/hooks/use-events";
 import { useAuth } from "@/hooks/use-auth";
-import type { Guest } from "@/lib/types";
+import {
+  AGE_GROUP_LABELS,
+  GENDER_LABELS,
+  MINISTRY_ROLE_LABELS,
+  formatFullName,
+  isCheckedInForDay,
+  type Gender,
+  type Guest,
+  type GuestStatus,
+} from "@/lib/types";
 import { exportGuestsToCSV } from "@/lib/csv-export";
 import { toast } from "sonner";
+import {
+  Campfire,
+  CheckCircle,
+  Church,
+  DownloadSimple,
+  MagnifyingGlass,
+  PencilSimple,
+  Printer,
+  SunHorizon,
+  Trash,
+  UserPlus,
+  Users,
+} from "@phosphor-icons/react";
 
 export const Route = createFileRoute("/_authenticated/guests")({
-  head: () => ({ meta: [{ title: "Guests — Inspired for Change" }] }),
-  component: GuestsPage,
+  head: () => ({ meta: [{ title: "Attendee Directory — Inspired for Change" }] }),
+  component: GuestsRouteLayout,
 });
 
-type Filter = "all" | "camping" | "not_camping";
-type Sort = "newest" | "name";
+function GuestsRouteLayout() {
+  const detailMatch = useMatch({ from: "/_authenticated/guests/$id", shouldThrow: false });
+  if (detailMatch) {
+    return <Outlet />;
+  }
+  return <GuestsDirectory />;
+}
 
-function GuestsPage() {
+type AccomFilter = "all" | "camping" | "not_camping";
+type GenderFilter = "all" | "male" | "female";
+type SortOrder = "newest" | "name" | "code";
+
+function GuestsDirectory() {
   const { selected } = useEvents();
   const { user } = useAuth();
   const [guests, setGuests] = useState<Guest[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
-  const [sort, setSort] = useState<Sort>("newest");
+  const [accomFilter, setAccomFilter] = useState<AccomFilter>("all");
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>("all");
+  const [dayFilter, setDayFilter] = useState<number | "all">("all");
+  const [sort, setSort] = useState<SortOrder>("newest");
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Guest>>({});
+  const [confirmDeleteGuest, setConfirmDeleteGuest] = useState<Guest | null>(null);
+
+  const loadGuests = async () => {
+    if (!selected) return;
+    const { data } = await supabase
+      .from("guests")
+      .select("*")
+      .eq("event_id", selected.id)
+      .order("created_at", { ascending: false });
+    setGuests((data as unknown as Guest[]) ?? []);
+    setLoading(false);
+  };
 
   useEffect(() => {
     if (!selected) return;
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      const { data } = await supabase
-        .from("guests")
-        .select("*")
-        .eq("event_id", selected.id)
-        .order("created_at", { ascending: false });
-      if (cancelled) return;
-      setGuests((data as Guest[]) ?? []);
-      setLoading(false);
-    };
-    load();
+    setLoading(true);
+    loadGuests();
+
     const channel = supabase
       .channel("guests-" + selected.id)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "guests" }, (payload) => {
-        const newGuest = payload.new as Guest;
-        if (newGuest.event_id === selected.id) {
-          toast.success(`New guest registered: ${newGuest.first_name} ${newGuest.last_name}`);
-          load();
-        }
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "guests" }, (payload) => {
-        const updated = payload.new as Guest;
-        if (updated.event_id === selected.id) {
-          toast.info(`Guest updated: ${updated.first_name} ${updated.last_name}`);
-          load();
-        }
-      })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "guests" }, (payload) => {
-        const deleted = payload.old as Guest;
-        if (deleted.event_id === selected.id) {
-          toast.warning(`Guest removed: ${deleted.first_name} ${deleted.last_name}`);
-          load();
-        }
+      .on("postgres_changes", { event: "*", schema: "public", table: "guests" }, () => {
+        loadGuests();
       })
       .subscribe();
+
     return () => {
-      cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [selected]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
+
+  const totalDays = selected?.total_days || 3;
+  const dayList = Array.from({ length: totalDays }, (_, i) => i + 1);
 
   const filtered = useMemo(() => {
     let rows = guests;
