@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import {
+  buildSuggestedEventCode,
   suggestAccommodationZone,
   type Profile,
   type Guest,
