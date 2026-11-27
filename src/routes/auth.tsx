@@ -119,7 +119,9 @@ function AuthPage() {
               Orderly hospitality for every gathering.
             </h1>
             <p className="max-w-[44ch] text-sm leading-relaxed opacity-80">
-              Manage conferences, youth camps, gospel crusades, and multi-day sanctuary check-ins with canonical UUID passes and household-friendly registration.
+              Manage Inspired for Change convocations, youth camps, leadership summits, seminars,
+              and partner organization events with canonical UUID passes and multi-event manager
+              telemetry.
             </p>
           </div>
         </div>
@@ -163,7 +165,9 @@ function AuthPage() {
             </div>
             <div>
               <div className="text-base font-bold text-foreground">Inspired for Change</div>
-              <div className="text-xs text-muted-foreground">Church Events & Sanctuary Registry</div>
+              <div className="text-xs text-muted-foreground">
+                Church Events & Sanctuary Registry
+              </div>
             </div>
           </div>
 
@@ -205,7 +209,10 @@ function AuthPage() {
             <form onSubmit={onSubmit} className="bezel-core space-y-4 p-6 sm:p-7">
               {mode === "signup" && (
                 <div>
-                  <label htmlFor="auth-display-name" className="mb-1.5 block text-xs font-semibold text-foreground">
+                  <label
+                    htmlFor="auth-display-name"
+                    className="mb-1.5 block text-xs font-semibold text-foreground"
+                  >
                     Full name
                   </label>
                   <input
