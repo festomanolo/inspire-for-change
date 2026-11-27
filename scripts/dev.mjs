@@ -15,6 +15,8 @@ const COLORS = {
 };
 
 function findAvailablePort(startPort) {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
 
 function prefixStream(stream, label, color) {
   let buffer = "";
