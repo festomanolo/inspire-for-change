@@ -306,12 +306,16 @@ function makeGuestBuilder(params: URLSearchParams) {
         if (this._isDelete) {
           const id = this._params.get("id");
           await apiDelete(`/guests/${id}`);
+          emitTableChange("guests", "DELETE", null, { id });
+          emitTableChange("guest_edits", "INSERT", {});
           resolve({ error: null });
           return;
         }
         if (this._updatePayload !== null) {
           const id = this._params.get("id");
           const data = await apiPut<Guest>(`/guests/${id}`, this._updatePayload);
+          emitTableChange("guests", "UPDATE", data);
+          emitTableChange("guest_edits", "INSERT", {});
           resolve({ data, error: null });
           return;
         }
@@ -346,7 +350,6 @@ function makeProfileBuilder(params: URLSearchParams) {
 
     async then(resolve: (v: any) => void, reject?: (e: any) => void) {
       try {
-        // No filters → return all profiles
         const qs = this._params.toString() ? "?" + this._params.toString() : "";
         const data = await apiGet<Profile[]>(`/profiles${qs}`);
         resolve({ data, error: null });
@@ -359,7 +362,6 @@ function makeProfileBuilder(params: URLSearchParams) {
   return builder;
 }
 
-// JSON Database API
 export const jsonDb = {
   profiles: {
     select(_cols?: string) {
@@ -369,20 +371,32 @@ export const jsonDb = {
 
   events: {
     select(_cols?: string) {
-      return {
-        order: (field: string, options: { ascending: boolean }) => {
-          return apiGet<EventRow[]>(`/events?orderBy=${field}&asc=${options.ascending}`).then(
-            (data) => ({ data, error: null })
-          );
-        },
-      };
+      return makeEventBuilder(new URLSearchParams());
     },
 
-    insert: (row: Omit<EventRow, "id" | "created_at">) => ({
+    insert: (row: Partial<EventRow> & { year: number; name: string }) => ({
       select: () => ({
-        single: () => apiPost<EventRow>("/events", row).then((data) => ({ data, error: null })),
+        single: () =>
+          apiPost<EventRow>("/events", row)
+            .then((data) => {
+              emitTableChange("events", "INSERT", data);
+              return { data, error: null };
+            })
+            .catch((err) => ({ data: null, error: { message: err.message } })),
       }),
     }),
+
+    update: (updates: Partial<EventRow>) => {
+      const builder = makeEventBuilder(new URLSearchParams());
+      builder._updatePayload = updates;
+      return builder;
+    },
+
+    delete: () => {
+      const builder = makeEventBuilder(new URLSearchParams());
+      builder._isDelete = true;
+      return builder;
+    },
   },
 
   guests: {
@@ -390,7 +404,7 @@ export const jsonDb = {
       return makeGuestBuilder(new URLSearchParams());
     },
 
-    insert: (row: Omit<Guest, "id" | "created_at" | "updated_at">) => ({
+    insert: (row: Partial<Guest> & { event_id: string; first_name: string; last_name: string }) => ({
       select: (_cols?: string) => ({
         single: () => apiPost<Guest>("/guests", row).then((data) => ({ data, error: null })),
       }),
