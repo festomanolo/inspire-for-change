@@ -95,113 +95,259 @@ function RegisterPage() {
     origin: "",
     church_name: "",
     phone: "",
-    status: "not_camping" as "camping" | "not_camping",
-    day: null as number | null,
+    is_shared_phone: false,
+    guardian_name: "",
+    email: "",
+    household_id: null as string | null,
+    status: "not_camping" as GuestStatus,
+    accommodation_zone: "",
+    dietary_medical: "",
+    days_registered: [1] as number[],
   });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [savedToast, setSavedToast] = useState("");
-  const [duplicateWarning, setDuplicateWarning] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Guest[]>([]);
-  const [showSearch, setShowSearch] = useState(false);
 
-  const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
-
-  const searchGuests = async (query: string) => {
-    if (!selected || query.length < 2) { setSearchResults([]); setShowSearch(false); return; }
+  const refreshEventGuests = async () => {
+    if (!selected) return;
     const { data } = await supabase.from("guests").select("*").eq("event_id", selected.id);
-    if (!data) { setSearchResults([]); return; }
-    const lq = query.toLowerCase();
-    const filtered = (data as Guest[]).filter(
-      (g) => g.first_name.toLowerCase().includes(lq) ||
-        g.last_name.toLowerCase().includes(lq) ||
-        g.phone.toLowerCase().includes(lq),
-    ).slice(0, 5);
-    setSearchResults(filtered);
-    setShowSearch(true);
+    setEventGuests((data as unknown as Guest[]) ?? []);
   };
 
-  const loadGuestData = (guest: Guest) => {
-    setForm({ first_name: guest.first_name, middle_name: guest.middle_name || "", last_name: guest.last_name, origin: guest.origin, phone: guest.phone, status: guest.status, day: null });
-    setSearchQuery(""); setSearchResults([]); setShowSearch(false); setDuplicateWarning("");
+  useEffect(() => {
+    refreshEventGuests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
+
+  // Keep suggested dormitory zone synced with gender + camping + age_group unless manually customized
+  useEffect(() => {
+    if (zoneManuallyEdited) return;
+    const suggested = suggestAccommodationZone(form.gender, form.status, form.age_group) ?? "";
+    setForm((prev) => ({ ...prev, accommodation_zone: suggested }));
+  }, [form.gender, form.status, form.age_group, zoneManuallyEdited]);
+
+  const lookupResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (q.length < 2) return [];
+    return eventGuests
+      .filter((g) =>
+        [g.reg_code, g.first_name, g.middle_name, g.last_name, formatFullName(g), g.phone, g.church_name]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q)),
+      )
+      .slice(0, 6);
+  }, [eventGuests, searchQuery]);
+
+  // Smart Household & Identity Analysis (never blocks shared family phones!)
+  const phoneMatches = useMemo(() => {
+    const clean = form.phone.replace(/\s+/g, "");
+    if (clean.length < 5) return [];
+    return eventGuests.filter((g) => g.phone.replace(/\s+/g, "") === clean);
+  }, [eventGuests, form.phone]);
+
+  const exactPersonMatch = useMemo(() => {
+    const fn = form.first_name.trim().toLowerCase();
+    const ln = form.last_name.trim().toLowerCase();
+    const mn = form.middle_name.trim().toLowerCase();
+    if (!fn || !ln) return null;
+    return (
+      eventGuests.find(
+        (g) =>
+          g.first_name.trim().toLowerCase() === fn &&
+          g.last_name.trim().toLowerCase() === ln &&
+          (g.middle_name ?? "").trim().toLowerCase() === mn,
+      ) ?? null
+    );
+  }, [eventGuests, form.first_name, form.last_name, form.middle_name]);
+
+  const toggleDay = (dayNum: number) => {
+    setForm((prev) => {
+      const exists = prev.days_registered.includes(dayNum);
+      const next = exists
+        ? prev.days_registered.filter((d) => d !== dayNum)
+        : [...prev.days_registered, dayNum].sort((a, b) => a - b);
+      return { ...prev, days_registered: next };
+    });
   };
 
-  const checkDuplicate = async (phone: string, firstName: string, lastName: string) => {
-    if (!selected || !phone || !firstName || !lastName) { setDuplicateWarning(""); return; }
-    const { data } = await supabase.from("guests").select("id, first_name, last_name, phone, day").eq("event_id", selected.id);
-    if (!data) { setDuplicateWarning(""); return; }
-    const currentDay = form.day;
-    const phoneMatch = (data as Guest[]).find((g) => g.phone === phone && g.day === currentDay);
-    const nameMatch = (data as Guest[]).find((g) => g.first_name.toLowerCase() === firstName.toLowerCase() && g.last_name.toLowerCase() === lastName.toLowerCase() && g.day === currentDay);
-    if (phoneMatch) {
-      setDuplicateWarning(`⚠️ Guest with phone ${phone} already registered for Day ${currentDay}.`);
-    } else if (nameMatch) {
-      setDuplicateWarning(`⚠️ ${nameMatch.first_name} ${nameMatch.last_name} already registered for Day ${currentDay}.`);
-    } else {
-      const otherDay = (data as Guest[]).find((g) => g.phone === phone && g.day !== currentDay);
-      if (otherDay && currentDay) {
-        setDuplicateWarning(`ℹ️ This guest is registered for Day ${otherDay.day}. You're registering them for Day ${currentDay}.`);
-      } else {
-        setDuplicateWarning("");
-      }
+  const selectAllDays = () => {
+    setForm((prev) => ({ ...prev, days_registered: [...dayOptions] }));
+  };
+
+  const linkToHousehold = (anchorGuest: Guest) => {
+    const sharedHouseholdId = anchorGuest.household_id || anchorGuest.id;
+    setForm((prev) => ({
+      ...prev,
+      origin: prev.origin || anchorGuest.origin,
+      church_name: prev.church_name || anchorGuest.church_name || "",
+      phone: anchorGuest.phone,
+      is_shared_phone: true,
+      household_id: sharedHouseholdId,
+      guardian_name:
+        prev.age_group === "child" && !prev.guardian_name
+          ? formatFullName(anchorGuest)
+          : prev.guardian_name,
+    }));
+    setSearchQuery("");
+    setShowLookup(false);
+    toast.info(`Linked to ${formatFullName(anchorGuest)}'s household`);
+  };
+
+  const addDayToExistingGuest = async (existing: Guest, targetDay: number) => {
+    if (!user) return;
+    const mergedDays = Array.from(new Set([...(existing.days_registered || []), targetDay])).sort(
+      (a, b) => a - b,
+    );
+    const nextCheckIns = {
+      ...(existing.check_ins ?? {}),
+      [String(targetDay)]: new Date().toISOString(),
+    };
+    const { error: err } = await supabase
+      .from("guests")
+      .update({
+        days_registered: mergedDays,
+        check_ins: nextCheckIns as any,
+        updated_by: user.id,
+      } as any)
+      .eq("id", existing.id);
+
+    if (err) {
+      toast.error("Could not update existing attendee");
+      return;
     }
+    toast.success(`Checked in ${formatFullName(existing)} (${existing.reg_code}) for Day ${targetDay}`);
+    navigate({ to: "/guests/$id", params: { id: existing.id } });
   };
 
-  const onSubmit = async (e: React.FormEvent, andAnother = false) => {
+  const handleSubmit = async (e: React.FormEvent, mode: "pass" | "household" | "fresh") => {
     e.preventDefault();
     setError("");
     if (!selected || !user) return;
-    const parsed = schema.safeParse(form);
-    if (!parsed.success) { setError(parsed.error.issues[0].message); return; }
 
-    const { data: existing } = await supabase.from("guests").select("id, first_name, last_name, phone, day").eq("event_id", selected.id);
-    if (existing && existing.length > 0) {
-      const cd = parsed.data.day;
-      const pm = (existing as Guest[]).find((g) => g.phone === parsed.data.phone && g.day === cd);
-      const nm = (existing as Guest[]).find((g) => g.first_name.toLowerCase() === parsed.data.first_name.toLowerCase() && g.last_name.toLowerCase() === parsed.data.last_name.toLowerCase() && g.day === cd);
-      if (pm) { setError(`A guest with phone ${parsed.data.phone} is already registered for Day ${cd}.`); return; }
-      if (nm) { setError(`${nm.first_name} ${nm.last_name} is already registered for Day ${cd}.`); return; }
+    const parsed = registrationSchema.safeParse(form);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0].message);
+      return;
+    }
+
+    if (exactPersonMatch) {
+      setError(
+        `${formatFullName(exactPersonMatch)} (${exactPersonMatch.reg_code}) is already registered in this event. Open their profile below to add days or check them in instead of creating a duplicate person.`,
+      );
+      return;
     }
 
     setSaving(true);
-    const { data, error: err } = await supabase
+    const initialCheckIns: Record<string, string> = {};
+    if (checkInNowDay && parsed.data.days_registered.includes(checkInNowDay)) {
+      initialCheckIns[String(checkInNowDay)] = new Date().toISOString();
+    }
+
+    const householdId =
+      form.household_id ||
+      (parsed.data.is_shared_phone && phoneMatches[0]
+        ? phoneMatches[0].household_id || phoneMatches[0].id
+        : parsed.data.is_shared_phone
+          ? crypto.randomUUID()
+          : null);
+
+    const { data, error: insertErr } = await supabase
       .from("guests")
       .insert({
         event_id: selected.id,
+        household_id: householdId,
         first_name: parsed.data.first_name,
         middle_name: parsed.data.middle_name || null,
         last_name: parsed.data.last_name,
+        gender: parsed.data.gender,
+        age_group: parsed.data.age_group,
+        ministry_role: parsed.data.ministry_role,
         origin: parsed.data.origin,
-        phone: parsed.data.phone,
+        church_name: parsed.data.church_name || null,
+        phone: parsed.data.phone || "",
+        is_shared_phone: parsed.data.is_shared_phone || phoneMatches.length > 0,
+        guardian_name: parsed.data.guardian_name || null,
+        email: parsed.data.email || null,
         status: parsed.data.status,
-        day: parsed.data.day,
+        accommodation_zone:
+          parsed.data.status === "camping"
+            ? parsed.data.accommodation_zone ||
+              suggestAccommodationZone(parsed.data.gender, parsed.data.status, parsed.data.age_group)
+            : null,
+        dietary_medical: parsed.data.dietary_medical || null,
+        day: parsed.data.days_registered[0] ?? 1,
+        days_registered: parsed.data.days_registered,
+        check_ins: initialCheckIns as any,
         created_by: user.id,
         updated_by: user.id,
-      })
+      } as any)
       .select()
       .single();
-    setSaving(false);
-    if (err) { setError(err.message); return; }
 
-    if (andAnother) {
-      setForm({ first_name: "", middle_name: "", last_name: "", origin: form.origin, phone: "", status: form.status, day: form.day });
-      setDuplicateWarning("");
-      setSavedToast(`✓ ${parsed.data.first_name} added`);
-      setTimeout(() => setSavedToast(""), 2200);
-    } else if (data) {
-      navigate({ to: "/guests/$id", params: { id: (data as { id: string }).id } });
+    setSaving(false);
+
+    if (insertErr || !data) {
+      setError(insertErr?.message || "Could not complete registration.");
+      return;
+    }
+
+    const saved = data as unknown as Guest;
+    await refreshEventGuests();
+    toast.success(`Registered ${formatFullName(saved)} · Badge ${saved.reg_code}`);
+
+    if (mode === "pass") {
+      setCreatedGuest(saved);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (mode === "household") {
+      const nextHouseholdId = saved.household_id || saved.id;
+      setCreatedGuest(null);
+      setZoneManuallyEdited(false);
+      setForm((prev) => ({
+        ...prev,
+        first_name: "",
+        middle_name: "",
+        gender: prev.gender === "male" ? "female" : "male",
+        is_shared_phone: Boolean(prev.phone),
+        household_id: nextHouseholdId,
+        guardian_name: formatFullName(saved),
+        dietary_medical: "",
+      }));
+    } else {
+      setCreatedGuest(null);
+      setZoneManuallyEdited(false);
+      setForm((prev) => ({
+        ...prev,
+        first_name: "",
+        middle_name: "",
+        last_name: "",
+        phone: "",
+        is_shared_phone: false,
+        household_id: null,
+        guardian_name: "",
+        email: "",
+        dietary_medical: "",
+      }));
     }
   };
 
+  if (!selected) {
+    return <div className="py-16 text-center text-sm text-muted-foreground">Loading registration desk…</div>;
+  }
+
   return (
-    <div style={{ maxWidth: "640px", margin: "0 auto" }}>
+    <div className="mx-auto max-w-4xl space-y-6">
       {/* Header */}
-      <div className="slide-up" style={{ marginBottom: "24px" }}>
-        <p style={{ fontSize: "0.8rem", color: "var(--color-muted-foreground)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-          {selected?.name}
-        </p>
-        <h1 style={{ marginTop: "2px" }}>Register a guest</h1>
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-xs font-medium text-muted-foreground">
+            {selected.name} · Badge prefix <span className="font-mono-code font-semibold text-foreground">{selected.code}</span>
+          </p>
+          <h1 className="mt-1">Attendee registration</h1>
+        </div>
+        <Link
+          to="/checkin"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground no-underline hover:border-accent/50"
+        >
+          <UserCheck size={15} className="text-accent" aria-hidden="true" />
+          Switch to fast gate check-in
+        </Link>
       </div>
 
       <form onSubmit={(e) => onSubmit(e, false)} className="surface-elevated fade-in" style={{ padding: "clamp(16px, 5vw, 32px)", display: "flex", flexDirection: "column", gap: "18px" }}>
