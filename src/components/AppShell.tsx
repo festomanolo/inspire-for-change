@@ -51,23 +51,11 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { events, selected, select } = useEvents();
 
-  const [eventModalOpen, setEventModalOpen] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [creatingEvent, setCreatingEvent] = useState(false);
 
-  const [newEventForm, setNewEventForm] = useState({
-    name: "",
-    year: new Date().getFullYear(),
-    category: "conference" as EventCategory,
-    total_days: 3,
-    venue: "Main Sanctuary & Campgrounds",
-    subtitle: "",
-    capacity: 500,
-    camping_enabled: true,
-    start_date: "",
-  });
-
+  const switcherRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
