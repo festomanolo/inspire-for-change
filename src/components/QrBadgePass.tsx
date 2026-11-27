@@ -97,7 +97,7 @@ export function QrBadgePass({
                 </p>
               )}
               <p className="text-xs font-medium text-muted-foreground">
-                {event?.name || "Church Gathering"} {event?.year ? `(${event.year})` : ""}
+                {event?.name || "Event Gathering"} {event?.year ? `(${event.year})` : ""}
               </p>
               <h3 className="mt-0.5 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
                 {fullName}
