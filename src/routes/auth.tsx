@@ -100,103 +100,90 @@ function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* Left panel — branding */}
-      <div
-        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden"
-        style={{
-          background: "linear-gradient(145deg, oklch(0.28 0.06 255) 0%, oklch(0.45 0.2 268) 50%, oklch(0.55 0.22 258) 100%)",
-        }}
-      >
-        {/* Decorative blobs */}
-        <div style={{
-          position: "absolute", top: "-80px", right: "-80px", width: "320px", height: "320px",
-          borderRadius: "50%", background: "oklch(1 0 0 / 0.06)", filter: "blur(60px)",
-        }} />
-        <div style={{
-          position: "absolute", bottom: "-60px", left: "-60px", width: "280px", height: "280px",
-          borderRadius: "50%", background: "oklch(1 0 0 / 0.08)", filter: "blur(50px)",
-        }} />
-
-        <div className="relative">
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "48px" }}>
-            <div style={{
-              width: "36px", height: "36px", borderRadius: "10px",
-              background: "oklch(1 0 0 / 0.15)", display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <SparkleIcon />
+    <div className="grid min-h-[100dvh] grid-cols-1 bg-background lg:grid-cols-12">
+      {/* Left Architectural Sanctuary Editorial Panel */}
+      <aside className="hidden flex-col justify-between bg-primary p-12 text-primary-foreground lg:col-span-5 lg:flex">
+        <div className="space-y-10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-foreground/14">
+              <Church size={22} weight="duotone" aria-hidden="true" />
             </div>
-            <span style={{ color: "white", fontWeight: 600, fontSize: "1.1rem", letterSpacing: "-0.02em" }}>
-              Inspired for Change
-            </span>
+            <div>
+              <span className="block text-base font-bold tracking-tight">Inspired for Change</span>
+              <span className="block text-xs opacity-75">Sanctuary & Church Event Operations</span>
+            </div>
           </div>
-          <h2 style={{ color: "white", fontSize: "clamp(2rem, 4vw, 2.8rem)", fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1.15, marginBottom: "16px" }}>
-            Guest Registration<br />Made Simple
-          </h2>
-          <p style={{ color: "oklch(1 0 0 / 0.7)", fontSize: "1rem", lineHeight: 1.6, maxWidth: "360px" }}>
-            Register and track event guests across multiple days with real-time collaboration for your entire team.
-          </p>
+
+          <div className="space-y-4">
+            <h1 className="max-w-[16ch] text-4xl leading-[1.08] font-extrabold tracking-tight">
+              Orderly hospitality for every gathering.
+            </h1>
+            <p className="max-w-[44ch] text-sm leading-relaxed opacity-80">
+              Manage conferences, youth camps, gospel crusades, and multi-day sanctuary check-ins with canonical UUID passes and household-friendly registration.
+            </p>
+          </div>
         </div>
 
-        <div style={{ position: "relative" }}>
+        <div className="space-y-3.5 border-t border-primary-foreground/15 pt-8 text-xs">
           {[
-            { icon: "✓", label: "Real-time guest tracking" },
-            { icon: "✓", label: "Multi-device staff access" },
-            { icon: "✓", label: "Instant duplicate detection" },
-            { icon: "✓", label: "CSV export & print reports" },
-          ].map((item, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-              <div style={{
-                width: "22px", height: "22px", borderRadius: "6px",
-                background: "oklch(1 0 0 / 0.15)", display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "12px", color: "white", flexShrink: 0,
-              }}>
-                {item.icon}
-              </div>
-              <span style={{ color: "oklch(1 0 0 / 0.8)", fontSize: "0.9rem" }}>{item.label}</span>
+            {
+              Icon: IdentificationBadge,
+              text: "Canonical UUID v4 records & printable QR badge passes (no phone-as-ID blocks)",
+            },
+            {
+              Icon: Campfire,
+              text: "Gender-aware dormitory allocation & multi-day session attendance",
+            },
+            {
+              Icon: UsersThree,
+              text: "Shared family phone linking for spouses, children, and parish delegations",
+            },
+            {
+              Icon: QrCode,
+              text: "Instant gate check-in desk & live pastoral follow-up telemetry",
+            },
+          ].map(({ Icon, text }) => (
+            <div key={text} className="flex items-center gap-3 opacity-90">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/12">
+                <Icon size={15} aria-hidden="true" />
+              </span>
+              <span>{text}</span>
             </div>
           ))}
         </div>
-      </div>
+      </aside>
 
-      {/* Right panel — form */}
-      <div className="flex-1 flex flex-col items-center justify-center px-5 py-10 sm:px-8 min-h-screen lg:min-h-0">
-        {/* Mobile logo */}
-        <div className="lg:hidden mb-8 text-center slide-up">
-          <div style={{
-            width: "52px", height: "52px", borderRadius: "16px", margin: "0 auto 12px",
-            background: "linear-gradient(135deg, oklch(0.28 0.06 255), oklch(0.55 0.22 258))",
-            display: "flex", alignItems: "center", justifyContent: "center", color: "white",
-          }}>
-            <SparkleIcon />
+      {/* Right Registrar Sign-in Workspace */}
+      <div className="flex flex-col items-center justify-center px-5 py-12 sm:px-8 lg:col-span-7">
+        <div className="w-full max-w-[420px] space-y-6">
+          {/* Mobile Header */}
+          <div className="flex items-center gap-3 lg:hidden">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <Church size={21} weight="duotone" aria-hidden="true" />
+            </div>
+            <div>
+              <div className="text-base font-bold text-foreground">Inspired for Change</div>
+              <div className="text-xs text-muted-foreground">Church Events & Sanctuary Registry</div>
+            </div>
           </div>
-          <h1 style={{ fontSize: "1.4rem", fontWeight: 700, letterSpacing: "-0.03em", marginBottom: "4px" }}>
-            Inspired for Change
-          </h1>
-          <p style={{ fontSize: "0.85rem", color: "var(--color-muted-foreground)" }}>
-            Guest registration system
-          </p>
-        </div>
 
-        <div className="w-full max-w-[420px] slide-up">
-          {/* Tab switcher */}
-          <div style={{
-            display: "flex", background: "var(--color-secondary)", borderRadius: "14px",
-            padding: "4px", marginBottom: "24px",
-          }}>
-            {(["signup", "signin"] as const).map((m) => (
+          {/* Mode Switcher */}
+          <div className="grid grid-cols-2 rounded-2xl border border-border bg-secondary p-1">
+            {(["signin", "signup"] as const).map((m) => (
               <button
                 key={m}
                 id={`auth-tab-${m}`}
                 type="button"
-                onClick={() => { setMode(m); setError(""); setSuccess(""); }}
-                style={{
-                  flex: 1, padding: "10px 16px", borderRadius: "10px", fontSize: "0.875rem",
-                  fontWeight: 500, border: "none", cursor: "pointer", transition: "all 0.2s ease",
-                  background: mode === m ? "var(--color-card)" : "transparent",
-                  color: mode === m ? "var(--color-foreground)" : "var(--color-muted-foreground)",
-                  boxShadow: mode === m ? "var(--shadow-soft)" : "none",
+                onClick={() => {
+                  setMode(m);
+                  setError("");
+                  setSuccess("");
                 }}
+                className={`cursor-pointer rounded-xl py-2.5 text-xs font-semibold ${
+                  mode === m
+                    ? "bg-card text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
                 {m === "signup" ? "Create account" : "Sign in"}
               </button>
