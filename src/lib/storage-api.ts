@@ -190,27 +190,40 @@ function initializeSampleData() {
     const year = new Date().getFullYear();
     const sampleEvent: EventRow = normalizeEvent({
       id: crypto.randomUUID(),
-      year: new Date().getFullYear(),
+      code: `IFC-${String(year).slice(-2)}`,
+      year,
       name: "Annual Gathering",
+      category: "conference",
+      subtitle: "Inspired for Change — Sanctuary Convocation",
+      venue: "Main Sanctuary & Campgrounds",
+      total_days: 3,
+      capacity: 500,
+      camping_enabled: true,
+      status: "active",
       created_at: new Date().toISOString(),
-    };
+    });
     writeJson(FILES.events, [sampleEvent]);
   }
 }
 
-// Auth API handlers
 export const authHandlers = {
   getSession: () => {
-    return readJson<any>(FILES.session, null);
+    const session = readJson<any>(FILES.session, null);
+    if (session && session.expires_at && session.expires_at < Date.now()) {
+      // Auto-renew local session token so active registrars aren't abruptly dropped mid-service
+      const renewed = { ...session, expires_at: Date.now() + 86400000 * 7 };
+      writeJson(FILES.session, renewed);
+      return renewed;
+    }
+    return session;
   },
 
   signUp: (params: { email: string; password: string; options?: { data?: { display_name?: string } } }) => {
     const { email, options } = params;
     const profiles = readJson<Profile[]>(FILES.profiles, []);
 
-    // Check if user already exists
-    if (profiles.find((p) => p.email === email)) {
-      throw new Error("User already exists");
+    if (profiles.find((p) => p.email.toLowerCase() === email.toLowerCase())) {
+      throw new Error("An account with this email already exists.");
     }
 
     const userId = crypto.randomUUID();
@@ -223,17 +236,16 @@ export const authHandlers = {
     const session = {
       user,
       access_token: `token_${userId}`,
-      expires_at: Date.now() + 3600000,
+      expires_at: Date.now() + 86400000 * 7,
     };
 
-    // Save session
     writeJson(FILES.session, session);
 
-    // Save profile
     const profile: Profile = {
       id: userId,
       email,
       display_name: options?.data?.display_name || email.split("@")[0],
+      role: profiles.length === 0 ? "admin" : "registrar",
       created_at: new Date().toISOString(),
     };
     profiles.push(profile);
