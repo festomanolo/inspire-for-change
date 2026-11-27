@@ -406,7 +406,14 @@ export const jsonDb = {
 
     insert: (row: Partial<Guest> & { event_id: string; first_name: string; last_name: string }) => ({
       select: (_cols?: string) => ({
-        single: () => apiPost<Guest>("/guests", row).then((data) => ({ data, error: null })),
+        single: () =>
+          apiPost<Guest>("/guests", row)
+            .then((data) => {
+              emitTableChange("guests", "INSERT", data);
+              emitTableChange("guest_edits", "INSERT", {});
+              return { data, error: null };
+            })
+            .catch((err) => ({ data: null, error: { message: err.message } })),
       }),
     }),
 
@@ -438,17 +445,36 @@ export const jsonDb = {
   },
 };
 
-// ─── No-op Realtime Channel (Supabase Realtime not available in JSON mode) ──
-class MockChannel {
-  on(_event: string, _filter: any, _callback: any) {
-    return this; // chainable
+class LocalRealtimeChannel {
+  private cleanups: (() => void)[] = [];
+
+  on(_type: string, filter: { event?: string; table?: string }, callback: (payload: any) => void) {
+    const table = filter?.table;
+    if (table) {
+      if (!tableSubscribers.has(table)) {
+        tableSubscribers.set(table, new Set());
+      }
+      const handler: TableChangeCallback = (payload) => {
+        if (!filter.event || filter.event === "*" || filter.event === payload.eventType) {
+          callback(payload);
+        }
+      };
+      tableSubscribers.get(table)!.add(handler);
+      this.cleanups.push(() => tableSubscribers.get(table)?.delete(handler));
+    }
+    return this;
   }
+
   subscribe() {
     return this;
   }
+
+  unsubscribe() {
+    this.cleanups.forEach((fn) => fn());
+    this.cleanups = [];
+  }
 }
 
-// JSON Supabase client structure
 export const jsonSupabase = {
   auth: jsonAuth,
 
@@ -460,12 +486,20 @@ export const jsonSupabase = {
     throw new Error(`Unknown table: ${table}`);
   },
 
-  // Realtime — no-op for local JSON mode
   channel(_name: string) {
-    return new MockChannel();
+    return new LocalRealtimeChannel();
   },
 
-  removeChannel(_channel: any) {
-    // no-op
+  removeChannel(channel: any) {
+    if (channel && typeof channel.unsubscribe === "function") {
+      channel.unsubscribe();
+    }
   },
 };
+
+export async function consolidateEventDuplicates(eventId: string, actorId?: string | null) {
+  return apiPost<{ mergedCount: number; remainingCount: number }>("/guests/consolidate", {
+    event_id: eventId,
+    actor_id: actorId ?? null,
+  });
+}
