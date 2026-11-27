@@ -148,7 +148,9 @@ export function QrBadgePass({
                   dangerouslySetInnerHTML={{ __html: svgMarkup }}
                 />
               ) : (
-                <span className="font-mono-code text-[11px] text-neutral-500">{guest.reg_code}</span>
+                <span className="font-mono-code text-[11px] text-neutral-500">
+                  {guest.reg_code}
+                </span>
               )}
             </div>
             <button
@@ -165,9 +167,12 @@ export function QrBadgePass({
         {/* Multi-day Attendance & Gate Check-in Strip */}
         <div className="mt-5 border-t border-border pt-4">
           <div className="mb-2 flex items-center justify-between text-xs">
-            <span className="font-medium text-muted-foreground">Registered days & gate verification</span>
+            <span className="font-medium text-muted-foreground">
+              Registered days & gate verification
+            </span>
             <span className="font-mono-code text-muted-foreground">
-              {Object.keys(guest.check_ins ?? {}).length}/{guest.days_registered?.length || 1} checked in
+              {Object.keys(guest.check_ins ?? {}).length}/{guest.days_registered?.length || 1}{" "}
+              checked in
             </span>
           </div>
           <div className="flex flex-wrap gap-1.5">
