@@ -1,56 +1,99 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useEvents } from "@/hooks/use-events";
 import { z } from "zod";
-import type { Guest } from "@/lib/types";
+import {
+  AGE_GROUP_LABELS,
+  MINISTRY_ROLE_LABELS,
+  formatFullName,
+  suggestAccommodationZone,
+  type AgeGroup,
+  type Gender,
+  type Guest,
+  type GuestStatus,
+  type MinistryRole,
+} from "@/lib/types";
+import { QrBadgePass } from "@/components/QrBadgePass";
+import { toast } from "sonner";
+import {
+  ArrowRight,
+  Campfire,
+  CheckCircle,
+  Church,
+  IdentificationBadge,
+  MagnifyingGlass,
+  SunHorizon,
+  UserCheck,
+  UserPlus,
+  Users,
+  WarningCircle,
+} from "@phosphor-icons/react";
 
 export const Route = createFileRoute("/_authenticated/register")({
-  head: () => ({ meta: [{ title: "Register guest — Inspired for Change" }] }),
+  head: () => ({ meta: [{ title: "Register attendee — Inspired for Change" }] }),
   component: RegisterPage,
 });
 
-const schema = z.object({
+const registrationSchema = z.object({
   first_name: z.string().trim().min(1, "First name is required").max(80),
   middle_name: z.string().trim().max(80).optional(),
   last_name: z.string().trim().min(1, "Last name is required").max(80),
-  origin: z.string().trim().min(1, "Origin / location is required").max(120),
-  phone: z.string().trim().min(4, "Phone number is required").max(40),
+  gender: z.enum(["male", "female"], {
+    errorMap: () => ({ message: "Please select Male or Female for sanctuary & dorm records" }),
+  }),
+  age_group: z.enum(["child", "youth", "young_adult", "adult", "elder"]),
+  ministry_role: z.enum([
+    "member",
+    "visitor",
+    "first_timer",
+    "pastor",
+    "leader",
+    "choir_media",
+    "volunteer",
+  ]),
+  origin: z.string().trim().min(1, "City or region is required").max(120),
+  church_name: z.string().trim().max(140).optional(),
+  phone: z.string().trim().max(40).optional(),
+  is_shared_phone: z.boolean(),
+  guardian_name: z.string().trim().max(120).optional(),
+  email: z.string().trim().email("Enter a valid email address").or(z.literal("")).optional(),
   status: z.enum(["camping", "not_camping"]),
-  day: z.number().min(1).max(3).nullable(),
+  accommodation_zone: z.string().trim().max(120).optional(),
+  dietary_medical: z.string().trim().max(300).optional(),
+  days_registered: z.array(z.number().int().min(1)).min(1, "Select at least one attendance day"),
 });
-
-const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "11px 14px", borderRadius: "12px",
-  background: "var(--color-input)", border: "1.5px solid var(--color-border)",
-  fontSize: "0.9rem", color: "var(--color-foreground)",
-  transition: "border-color 0.15s ease, box-shadow 0.15s ease",
-};
-
-function Field({ label, required, hint, children }: {
-  label: string; required?: boolean; hint?: string; children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "6px", color: "var(--color-foreground)" }}>
-        {label}{required && <span style={{ color: "var(--color-accent)", marginLeft: "3px" }}>*</span>}
-      </label>
-      {children}
-      {hint && <p style={{ fontSize: "0.72rem", color: "var(--color-muted-foreground)", marginTop: "4px" }}>{hint}</p>}
-    </div>
-  );
-}
 
 function RegisterPage() {
   const { selected } = useEvents();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const totalDays = selected?.total_days || 3;
+  const dayOptions = useMemo(
+    () => Array.from({ length: totalDays }, (_, i) => i + 1),
+    [totalDays],
+  );
+
+  const [eventGuests, setEventGuests] = useState<Guest[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showLookup, setShowLookup] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [createdGuest, setCreatedGuest] = useState<Guest | null>(null);
+  const [checkInNowDay, setCheckInNowDay] = useState<number | null>(1);
+  const [zoneManuallyEdited, setZoneManuallyEdited] = useState(false);
+
   const [form, setForm] = useState({
     first_name: "",
     middle_name: "",
     last_name: "",
+    gender: "male" as Gender,
+    age_group: "adult" as AgeGroup,
+    ministry_role: "member" as MinistryRole,
     origin: "",
+    church_name: "",
     phone: "",
     status: "not_camping" as "camping" | "not_camping",
     day: null as number | null,
