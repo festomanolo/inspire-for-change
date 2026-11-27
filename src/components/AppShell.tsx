@@ -4,79 +4,75 @@ import { useAuth } from "@/hooks/use-auth";
 import { useEvents } from "@/hooks/use-events";
 import { useState, useEffect, useRef } from "react";
 import { exportAllDataToCSV } from "@/lib/csv-export";
+import { EVENT_CATEGORY_LABELS, type EventCategory } from "@/lib/types";
+import { toast } from "sonner";
+import {
+  CalendarPlus,
+  CaretDown,
+  ChartBar,
+  Church,
+  DownloadSimple,
+  House,
+  ListChecks,
+  Moon,
+  Plus,
+  QrCode,
+  ShieldCheck,
+  SignOut,
+  Sun,
+  UserPlus,
+  UsersThree,
+  X,
+} from "@phosphor-icons/react";
 
-// ── Icons ─────────────────────────────────────────────────────────────────────
-function HomeIcon({ active }: { active?: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? "currentColor" : "none"}
-      stroke="currentColor" strokeWidth={active ? "0" : "1.8"} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
-      <path d="M9 21V12h6v9" stroke="currentColor" strokeWidth="1.8" fill="none"/>
-    </svg>
-  );
-}
-function EditIcon({ active }: { active?: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-      {active && <circle cx="19" cy="5" r="3" fill="currentColor" stroke="none"/>}
-    </svg>
-  );
-}
-function UsersIcon({ active }: { active?: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-      <circle cx="9" cy="7" r="4" fill={active ? "currentColor" : "none"}/>
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-    </svg>
-  );
-}
-function ShieldIcon({ active }: { active?: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? "currentColor" : "none"}
-      stroke="currentColor" strokeWidth={active ? "0" : "1.8"} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-    </svg>
-  );
-}
-function MenuIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
-    </svg>
-  );
-}
-function ChevronIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <polyline points="6 9 12 15 18 9"/>
-    </svg>
-  );
-}
+const NAV_ITEMS = [
+  { to: "/", label: "Overview", Icon: House },
+  { to: "/register", label: "Register", Icon: UserPlus },
+  { to: "/checkin", label: "Check-in", Icon: QrCode },
+  { to: "/guests", label: "Directory", Icon: UsersThree },
+  { to: "/admin", label: "Ministry ops", Icon: ShieldCheck },
+] as const;
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const NAV = [
-  { to: "/", label: "Dashboard", Icon: HomeIcon },
-  { to: "/register", label: "Register", Icon: EditIcon },
-  { to: "/guests", label: "Guests", Icon: UsersIcon },
-  { to: "/admin", label: "Admin", Icon: ShieldIcon },
-];
-
-// ── Component ─────────────────────────────────────────────────────────────────
 export function AppShell({ children }: { children?: React.ReactNode }) {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { events, selected, select, createYear } = useEvents();
-  const [adding, setAdding] = useState(false);
-  const [newYear, setNewYear] = useState(new Date().getFullYear() + 1);
+  const { events, selected, select, createEvent } = useEvents();
+
+  const [eventModalOpen, setEventModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [creatingEvent, setCreatingEvent] = useState(false);
+
+  const [newEventForm, setNewEventForm] = useState({
+    name: "",
+    year: new Date().getFullYear(),
+    category: "conference" as EventCategory,
+    total_days: 3,
+    venue: "Main Sanctuary & Campgrounds",
+    subtitle: "",
+    capacity: 500,
+    camping_enabled: true,
+    start_date: "",
+  });
+
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = localStorage.getItem("ifc-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const isDark = saved ? saved === "dark" : prefersDark;
+    setDarkMode(isDark);
+    document.documentElement.classList.toggle("dark", isDark);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = !darkMode;
+    setDarkMode(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("ifc-theme", next ? "dark" : "light");
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -99,86 +95,101 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
     try {
       await exportAllDataToCSV();
       setMenuOpen(false);
+      toast.success("Full event archive exported to CSV");
     } catch {
-      alert("Failed to export data. Please try again.");
+      toast.error("Could not export archive. Please try again.");
     }
   };
 
-  const handleAdd = async () => {
+  const handleCreateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEventForm.name.trim()) {
+      toast.error("Please enter an event name");
+      return;
+    }
+    setCreatingEvent(true);
     try {
-      await createYear(newYear, `Event ${newYear}`);
-      setAdding(false);
-    } catch {
-      alert("Could not create event year. It may already exist.");
+      const created = await createEvent({
+        name: newEventForm.name,
+        year: newEventForm.year,
+        category: newEventForm.category,
+        total_days: Math.max(1, Math.min(14, newEventForm.total_days)),
+        venue: newEventForm.venue || null,
+        subtitle: newEventForm.subtitle || null,
+        capacity: newEventForm.capacity || null,
+        camping_enabled: newEventForm.camping_enabled,
+        start_date: newEventForm.start_date || null,
+      });
+      toast.success(`Created "${created.name}" (${created.code})`);
+      setEventModalOpen(false);
+      setNewEventForm((prev) => ({ ...prev, name: "", subtitle: "" }));
+    } catch (err: any) {
+      toast.error(err?.message || "Could not create church event");
+    } finally {
+      setCreatingEvent(false);
     }
   };
 
   const initials = profile?.display_name
-    ? profile.display_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
-    : "?";
+    ? profile.display_name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "ST";
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* ── Top header ─────────────────────────────────────────────────────── */}
-      <header className="no-print sticky top-0 z-40" style={{
-        backdropFilter: "blur(20px) saturate(1.8)",
-        WebkitBackdropFilter: "blur(20px) saturate(1.8)",
-        background: "oklch(0.985 0.002 250 / 0.85)",
-        borderBottom: "1px solid var(--color-border)",
-      }}>
-        <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 16px" }}>
-          <div style={{ height: "58px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+    <div className="min-h-[100dvh] bg-background text-foreground">
+      <a
+        href="#main-workspace"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground"
+      >
+        Skip to workspace
+      </a>
 
-            {/* Logo */}
-            <Link to="/" style={{
-              fontWeight: 700, fontSize: "1.05rem", letterSpacing: "-0.025em",
-              textDecoration: "none", color: "var(--color-foreground)", display: "flex",
-              alignItems: "center", gap: "8px", flexShrink: 0,
-            }}>
-              <div style={{
-                width: "30px", height: "30px", borderRadius: "8px",
-                background: "linear-gradient(135deg, oklch(0.28 0.06 255), oklch(0.55 0.22 258))",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="white">
-                  <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
-                </svg>
-              </div>
-              <span className="hidden sm:inline">Inspired for Change</span>
-              <span className="sm:hidden">IFC</span>
-            </Link>
+      {/* Top Navigation Header */}
+      <header className="no-print surface-glass sticky top-0 z-40 border-b border-border">
+        <div className="mx-auto flex h-16 max-w-[1320px] items-center justify-between gap-3 px-4 sm:px-6">
+          {/* Brand Identity */}
+          <Link
+            to="/"
+            className="flex shrink-0 items-center gap-2.5 text-foreground no-underline"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
+              <Church size={19} weight="duotone" aria-hidden="true" />
+            </div>
+            <div className="leading-tight">
+              <span className="block text-sm font-bold tracking-tight sm:text-[15px]">
+                Inspired for Change
+              </span>
+              <span className="hidden text-[11px] text-muted-foreground sm:block">
+                Church Events & Sanctuary Registry
+              </span>
+            </div>
+          </Link>
 
-            {/* Desktop nav */}
-            <nav className="hidden md:flex items-center gap-1">
-              {NAV.map((n) => {
-                const active = n.to === "/" ? pathname === "/" : pathname.startsWith(n.to);
-                return (
-                  <Link
-                    key={n.to}
-                    to={n.to}
-                    style={{
-                      padding: "7px 14px", borderRadius: "9999px", fontSize: "0.85rem",
-                      fontWeight: active ? 600 : 500, textDecoration: "none",
-                      background: active ? "var(--color-primary)" : "transparent",
-                      color: active ? "var(--color-primary-foreground)" : "var(--color-muted-foreground)",
-                      transition: "all 0.15s ease",
-                      display: "flex", alignItems: "center", gap: "6px",
-                    }}
-                  >
-                    {n.label}
-                    {n.label === "Admin" && (
-                      <span style={{
-                        fontSize: "0.65rem", padding: "1px 5px", borderRadius: "9999px",
-                        background: active ? "oklch(1 0 0 / 0.2)" : "var(--color-accent)",
-                        color: "white", fontWeight: 700, lineHeight: "1.4",
-                      }}>
-                        ADMIN
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
+          {/* Desktop Single-Line Navigation */}
+          <nav aria-label="Primary navigation" className="hidden lg:flex lg:items-center lg:gap-1">
+            {NAV_ITEMS.map((item) => {
+              const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+              const Icon = item.Icon;
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium no-underline ${
+                    active
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  }`}
+                >
+                  <Icon size={16} weight={active ? "fill" : "regular"} aria-hidden="true" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
 
             {/* Right side */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
