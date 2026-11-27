@@ -9,7 +9,7 @@ import {
   type Guest,
   type EventRow,
   type GuestEdit,
-} from "./types";
+} from "./types.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -73,6 +73,29 @@ function emitTableChange(table: string, eventType: string, newRow: any, oldRow: 
   }
 }
 
+let sseInitialized = false;
+function ensureRealtimeStream() {
+  if (sseInitialized || typeof window === "undefined" || typeof EventSource === "undefined") {
+    return;
+  }
+  sseInitialized = true;
+  try {
+    const es = new EventSource(`${API_BASE}/stream`);
+    es.onmessage = (evt) => {
+      try {
+        const msg = JSON.parse(evt.data);
+        if (msg?.table && msg?.eventType) {
+          emitTableChange(msg.table, msg.eventType, msg.new ?? {}, msg.old ?? null);
+        }
+      } catch {
+        // Ignore malformed SSE frames
+      }
+    };
+  } catch {
+    // Fallback gracefully when running without SSE stream endpoint
+  }
+}
+
 export const jsonAuth = {
   getSession: async () => {
     try {
@@ -508,6 +531,7 @@ class LocalRealtimeChannel {
   }
 
   subscribe() {
+    ensureRealtimeStream();
     return this;
   }
 
