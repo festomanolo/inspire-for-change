@@ -76,11 +76,15 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (menuRef.current && !menuRef.current.contains(target)) {
         setMenuOpen(false);
       }
+      if (switcherRef.current && !switcherRef.current.contains(target)) {
+        setSwitcherOpen(false);
+      }
     }
-    if (menuOpen) {
+    if (menuOpen || switcherOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
