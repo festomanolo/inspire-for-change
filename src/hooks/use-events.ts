@@ -142,6 +142,23 @@ export function useEvents() {
     throw new Error("Failed to create event");
   };
 
+  const duplicateEvent = async (source: EventRow) => {
+    return createEvent({
+      name: `${source.name} (Copy)`,
+      year: source.year,
+      organizer: source.organizer,
+      category: source.category,
+      subtitle: source.subtitle,
+      venue: source.venue,
+      start_date: source.start_date,
+      end_date: source.end_date,
+      total_days: source.total_days,
+      capacity: source.capacity,
+      camping_enabled: source.camping_enabled,
+      status: "upcoming",
+    });
+  };
+
   const createYear = async (year: number, name: string) => {
     return createEvent({ year, name, category: "conference", total_days: 3 });
   };
@@ -176,6 +193,7 @@ export function useEvents() {
     selectedId,
     select,
     createEvent,
+    duplicateEvent,
     createYear,
     updateEvent,
     deleteEvent,
