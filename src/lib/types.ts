@@ -38,7 +38,7 @@ export type Profile = {
 export type Guest = {
   /** Immutable RFC-4122 UUID v4 primary key — never derived from phone number */
   id: string;
-  /** Human-scannable unique event badge code, e.g. IFC-26-0001 */
+  /** Human-scannable unique event badge code, e.g. YRC-26-0001 */
   reg_code: string;
   event_id: string;
   /** Optional shared family/delegation UUID for households sharing contact info */
