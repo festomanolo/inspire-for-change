@@ -100,8 +100,11 @@ function MinistryAdminPage() {
     if (!selected) return;
     setEventConfig({
       name: selected.name,
+      organizer: selected.organizer || "",
+      code: selected.code || "",
       year: selected.year,
       category: selected.category || "conference",
+      status: selected.status || "active",
       total_days: selected.total_days || 3,
       capacity: selected.capacity || 500,
       venue: selected.venue || "",
@@ -166,6 +169,8 @@ function MinistryAdminPage() {
     try {
       await updateEvent(selected.id, {
         name: eventConfig.name,
+        organizer: eventConfig.organizer.trim() || null,
+        code: eventConfig.code.trim().toUpperCase() || selected.code,
         year: eventConfig.year,
         category: eventConfig.category,
         total_days: Math.max(1, Math.min(14, eventConfig.total_days)),
