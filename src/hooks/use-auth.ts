@@ -17,6 +17,7 @@ export function useAuth() {
 
   useEffect(() => {
     let mounted = true;
+    let currentUid: string | null = null;
 
     const loadProfile = async (uid: string) => {
       const { data } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
@@ -25,8 +26,10 @@ export function useAuth() {
 
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
-      setUser((data.session?.user as any) ?? null);
-      if (data.session?.user) loadProfile(data.session.user.id);
+      const u = (data.session?.user as any) ?? null;
+      currentUid = u?.id ?? null;
+      setUser(u);
+      if (u) loadProfile(u.id);
       setLoading(false);
     });
 
