@@ -96,39 +96,54 @@ function GuestsDirectory() {
 
   const filtered = useMemo(() => {
     let rows = guests;
-    if (filter !== "all") rows = rows.filter((g) => g.status === filter);
+    if (accomFilter !== "all") rows = rows.filter((g) => g.status === accomFilter);
+    if (genderFilter !== "all") rows = rows.filter((g) => g.gender === genderFilter);
+    if (dayFilter !== "all") {
+      rows = rows.filter((g) => g.days_registered?.includes(dayFilter) || g.day === dayFilter);
+    }
+
     const q = query.trim().toLowerCase();
     if (q) {
       rows = rows.filter((g) =>
-        [g.first_name, g.middle_name, g.last_name, g.origin, g.phone]
+        [
+          g.reg_code,
+          g.id,
+          g.first_name,
+          g.middle_name,
+          g.last_name,
+          formatFullName(g),
+          g.origin,
+          g.church_name,
+          g.phone,
+          g.accommodation_zone,
+        ]
           .filter(Boolean)
-          .some((v) => (v as string).toLowerCase().includes(q)),
+          .some((v) => String(v).toLowerCase().includes(q)),
       );
     }
+
     if (sort === "name") {
       rows = [...rows].sort((a, b) =>
         `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`),
       );
+    } else if (sort === "code") {
+      rows = [...rows].sort((a, b) => (a.reg_code || "").localeCompare(b.reg_code || ""));
     }
     return rows;
-  }, [guests, query, filter, sort]);
+  }, [guests, query, accomFilter, genderFilter, dayFilter, sort]);
 
-  const exportCsv = async () => {
+  const handleExportCsv = async () => {
     try {
       await exportGuestsToCSV(selected?.id);
+      toast.success("Attendee CSV downloaded");
     } catch {
-      alert("Failed to export CSV. Please try again.");
+      toast.error("Failed to export CSV. Please try again.");
     }
   };
 
   const startEdit = (guest: Guest) => {
     setEditingId(guest.id);
-    setEditForm(guest);
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditForm({});
+    setEditForm({ ...guest });
   };
 
   const saveEdit = async () => {
@@ -139,12 +154,13 @@ function GuestsDirectory() {
         first_name: editForm.first_name,
         middle_name: editForm.middle_name || null,
         last_name: editForm.last_name,
+        gender: editForm.gender,
         origin: editForm.origin,
-        phone: editForm.phone,
+        church_name: editForm.church_name || null,
+        phone: editForm.phone || "",
         status: editForm.status,
-        day: editForm.day,
         updated_by: user.id,
-      })
+      } as any)
       .eq("id", editingId);
 
     if (err) { toast.error("Failed to update guest"); return; }
