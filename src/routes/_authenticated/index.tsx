@@ -458,7 +458,9 @@ function DashboardOverview() {
 
           {edits.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border py-12 text-center">
-              <p className="text-sm font-semibold text-foreground">No registrar actions logged yet</p>
+              <p className="text-sm font-semibold text-foreground">
+                No registrar actions logged yet
+              </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Every registration, profile edit, and gate check-in appears here automatically.
               </p>
@@ -466,7 +468,9 @@ function DashboardOverview() {
           ) : (
             <ul className="divide-y divide-border">
               {edits.map((e) => {
-                const who = e.edited_by ? profiles[e.edited_by]?.display_name ?? "Registrar" : "System";
+                const who = e.edited_by
+                  ? (profiles[e.edited_by]?.display_name ?? "Registrar")
+                  : "System";
                 const verb =
                   e.action === "create"
                     ? "registered"
@@ -493,7 +497,9 @@ function DashboardOverview() {
                         </Link>
                       ) : (
                         <span className="font-medium text-foreground">
-                          {(e.changes as any)?.name || (e.changes as any)?.deleted_guest || "attendee"}
+                          {(e.changes as any)?.name ||
+                            (e.changes as any)?.deleted_guest ||
+                            "attendee"}
                         </span>
                       )}
                     </div>
