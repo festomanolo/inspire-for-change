@@ -9,6 +9,19 @@ import {
 
 const STORAGE_KEY = "selectedEventId";
 const EVENT_BUS = "ifc:selected-event-changed";
+export const EVENT_STUDIO_BUS = "ifc:open-event-studio";
+
+export type EventStudioDetail = {
+  mode: "create" | "edit";
+  event?: EventRow;
+  presetCategory?: EventCategory;
+};
+
+export function openEventStudio(detail: EventStudioDetail = { mode: "create" }) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent<EventStudioDetail>(EVENT_STUDIO_BUS, { detail }));
+  }
+}
 
 export type CreateChurchEventInput = {
   name: string;
