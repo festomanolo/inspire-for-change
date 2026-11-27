@@ -136,6 +136,38 @@ export const EVENT_CATEGORY_LABELS: Record<EventCategory, string> = {
   worship_service: "Special gathering",
 };
 
+export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
+  active: "Active now",
+  upcoming: "Upcoming",
+  completed: "Completed",
+  archived: "Archived",
+};
+
+export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
+  manager: "Event manager",
+  admin: "Administrator",
+  registrar: "Desk registrar",
+  usher: "Gate usher",
+};
+
+export function buildSuggestedEventCode(name: string, year: number): string {
+  const words = name
+    .replace(/[^a-zA-Z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  let prefix = "EVT";
+  if (words.length >= 2) {
+    prefix = words
+      .map((w) => w[0]?.toUpperCase() ?? "")
+      .join("")
+      .slice(0, 4);
+  } else if (words.length === 1) {
+    prefix = words[0].slice(0, 3).toUpperCase();
+  }
+  if (prefix.length < 2) prefix = "EVT";
+  return `${prefix}-${String(year).slice(-2)}`;
+}
+
 export function suggestAccommodationZone(
   gender: Gender,
   status: GuestStatus,
@@ -143,8 +175,8 @@ export function suggestAccommodationZone(
 ): string | null {
   if (status !== "camping") return null;
   if (ageGroup === "child") return "Family & Children Lodge";
-  if (gender === "male") return "Men's Sanctuary Dorm A";
-  if (gender === "female") return "Women's Sanctuary Dorm B";
+  if (gender === "male") return "Men's Dormitory Zone A";
+  if (gender === "female") return "Women's Dormitory Zone B";
   return "General Campgrounds";
 }
 
