@@ -88,7 +88,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [menuOpen]);
+  }, [menuOpen, switcherOpen]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -99,38 +99,9 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
     try {
       await exportAllDataToCSV();
       setMenuOpen(false);
-      toast.success("Full event archive exported to CSV");
+      toast.success("Full multi-event archive exported to CSV");
     } catch {
       toast.error("Could not export archive. Please try again.");
-    }
-  };
-
-  const handleCreateEvent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newEventForm.name.trim()) {
-      toast.error("Please enter an event name");
-      return;
-    }
-    setCreatingEvent(true);
-    try {
-      const created = await createEvent({
-        name: newEventForm.name,
-        year: newEventForm.year,
-        category: newEventForm.category,
-        total_days: Math.max(1, Math.min(14, newEventForm.total_days)),
-        venue: newEventForm.venue || null,
-        subtitle: newEventForm.subtitle || null,
-        capacity: newEventForm.capacity || null,
-        camping_enabled: newEventForm.camping_enabled,
-        start_date: newEventForm.start_date || null,
-      });
-      toast.success(`Created "${created.name}" (${created.code})`);
-      setEventModalOpen(false);
-      setNewEventForm((prev) => ({ ...prev, name: "", subtitle: "" }));
-    } catch (err: any) {
-      toast.error(err?.message || "Could not create church event");
-    } finally {
-      setCreatingEvent(false);
     }
   };
 
