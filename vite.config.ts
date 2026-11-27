@@ -5,7 +5,7 @@ import viteReact from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 
-const backendTarget = `http://127.0.0.1:${process.env.BACKEND_PORT || 3001}`;
+const backendTarget = `http://127.0.0.1:${process.env.BACKEND_PORT || 8081}`;
 
 export default defineConfig({
   plugins: [tanstackStart(), viteReact(), tailwindcss(), tsconfigPaths()],
