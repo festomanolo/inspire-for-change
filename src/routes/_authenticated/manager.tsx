@@ -1174,12 +1174,20 @@ function ManagerDashboardPage() {
                     Session-by-day attendance vs gate verification
                   </h3>
                   <p className="mb-4 text-xs text-muted-foreground">
-                    Expected registrations vs verified physical check-ins across {selected.total_days || 3} days
+                    Expected registrations vs verified physical check-ins across{" "}
+                    {selected.total_days || 3} days
                   </p>
                   <div className="h-60 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={selectedDailyChartData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                      <BarChart
+                        data={selectedDailyChartData}
+                        margin={{ top: 8, right: 8, left: -18, bottom: 0 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="var(--color-border)"
+                          vertical={false}
+                        />
                         <XAxis
                           dataKey="day"
                           tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
@@ -1200,8 +1208,16 @@ function ManagerDashboardPage() {
                             fontSize: "12px",
                           }}
                         />
-                        <Bar dataKey="Registered" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
-                        <Bar dataKey="Checked in" fill="var(--color-success)" radius={[6, 6, 0, 0]} />
+                        <Bar
+                          dataKey="Registered"
+                          fill="var(--color-primary)"
+                          radius={[6, 6, 0, 0]}
+                        />
+                        <Bar
+                          dataKey="Checked in"
+                          fill="var(--color-success)"
+                          radius={[6, 6, 0, 0]}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1209,7 +1225,9 @@ function ManagerDashboardPage() {
 
                 {/* Gender & Age Breakdown */}
                 <div className="surface-card space-y-4 p-6 lg:col-span-5">
-                  <h3 className="text-base font-bold text-foreground">Demographics & age brackets</h3>
+                  <h3 className="text-base font-bold text-foreground">
+                    Demographics & age brackets
+                  </h3>
                   <div className="space-y-2.5 text-xs">
                     {[
                       { label: "Male", count: selectedAnalytics.male },
@@ -1230,7 +1248,10 @@ function ManagerDashboardPage() {
                             </span>
                           </div>
                           <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                            <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                            <div
+                              className="h-full rounded-full bg-primary"
+                              style={{ width: `${pct}%` }}
+                            />
                           </div>
                         </div>
                       );
@@ -1259,7 +1280,9 @@ function ManagerDashboardPage() {
                 {/* Dormitory & Lodging Zones */}
                 <div className="surface-card space-y-3 p-6">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold text-foreground">Dormitory & lodging zones</h3>
+                    <h3 className="text-base font-bold text-foreground">
+                      Dormitory & lodging zones
+                    </h3>
                     <Campfire size={17} className="text-warm" weight="duotone" aria-hidden="true" />
                   </div>
                   {!selected.camping_enabled ? (
@@ -1267,7 +1290,9 @@ function ManagerDashboardPage() {
                       Day-only event (on-site camping is disabled for this program).
                     </p>
                   ) : selectedAnalytics.dormZones.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No campers assigned to dorm zones yet.</p>
+                    <p className="text-xs text-muted-foreground">
+                      No campers assigned to dorm zones yet.
+                    </p>
                   ) : (
                     <ul className="divide-y divide-border text-xs">
                       {selectedAnalytics.dormZones.map(([zone, count]) => (
