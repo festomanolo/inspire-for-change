@@ -1,21 +1,25 @@
-// CSV Export utility
-import type { Guest, Profile, EventRow } from "./types";
+// Enriched CSV Export utility for Church Events Management
+import {
+  AGE_GROUP_LABELS,
+  GENDER_LABELS,
+  MINISTRY_ROLE_LABELS,
+  type EventRow,
+  type Guest,
+  type Profile,
+} from "./types";
 
-function escapeCSV(value: any): string {
+function escapeCSV(value: unknown): string {
   if (value === null || value === undefined) return "";
   const str = String(value);
-  // Escape quotes and wrap in quotes if contains comma, quote, or newline
   if (str.includes(",") || str.includes('"') || str.includes("\n")) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;
 }
 
-export function convertToCSV(data: any[], headers: string[]): string {
+export function convertToCSV(data: Record<string, unknown>[], headers: string[]): string {
   const headerRow = headers.map(escapeCSV).join(",");
-  const dataRows = data.map((row) => {
-    return headers.map((header) => escapeCSV(row[header])).join(",");
-  });
+  const dataRows = data.map((row) => headers.map((header) => escapeCSV(row[header])).join(","));
   return [headerRow, ...dataRows].join("\n");
 }
 
@@ -29,19 +33,20 @@ export function downloadCSV(filename: string, csvContent: string): void {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 export async function exportGuestsToCSV(eventId?: string): Promise<void> {
-  try {
-    const response = await fetch("/api/storage/export");
-    const data = await response.json();
+  const response = await fetch("/api/storage/export");
+  const data = await response.json();
 
-    let guests: Guest[] = data.guests;
+  let guests: Guest[] = data.guests ?? [];
+  if (eventId) {
+    guests = guests.filter((g) => g.event_id === eventId);
+  }
 
-    // Filter by event if provided
-    if (eventId) {
-      guests = guests.filter((g) => g.event_id === eventId);
-    }
+  const profiles: Profile[] = data.profiles ?? [];
+  const events: EventRow[] = data.events ?? [];
 
     // Enrich with creator/updater names
     const profiles: Profile[] = data.profiles;
