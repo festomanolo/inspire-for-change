@@ -2,40 +2,88 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import type { Guest, GuestEdit, Profile } from "@/lib/types";
+import { useEvents } from "@/hooks/use-events";
+import {
+  AGE_GROUP_LABELS,
+  GENDER_LABELS,
+  MINISTRY_ROLE_LABELS,
+  formatFullName,
+  isCheckedInForDay,
+  suggestAccommodationZone,
+  type AgeGroup,
+  type Gender,
+  type Guest,
+  type GuestEdit,
+  type MinistryRole,
+  type Profile,
+} from "@/lib/types";
+import { QrBadgePass } from "@/components/QrBadgePass";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import {
+  ArrowLeft,
+  Check,
+  CheckCircle,
+  Copy,
+  PencilSimple,
+  Trash,
+  Users,
+} from "@phosphor-icons/react";
 
 export const Route = createFileRoute("/_authenticated/guests/$id")({
-  head: () => ({ meta: [{ title: "Guest — Inspired for Change" }] }),
-  component: GuestDetail,
+  head: () => ({ meta: [{ title: "Attendee Pass & Record — Inspired for Change" }] }),
+  component: GuestDetailPage,
 });
 
-function GuestDetail() {
+function GuestDetailPage() {
   const { id } = Route.useParams();
   const { user } = useAuth();
+  const { events, selected } = useEvents();
   const navigate = useNavigate();
+
   const [guest, setGuest] = useState<Guest | null>(null);
+  const [householdPeers, setHouseholdPeers] = useState<Guest[]>([]);
   const [history, setHistory] = useState<GuestEdit[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Guest>>({});
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [copiedUuid, setCopiedUuid] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   const load = async () => {
     const { data: g } = await supabase.from("guests").select("*").eq("id", id).maybeSingle();
-    setGuest((g as Guest) ?? null);
-    if (g) setForm(g as Guest);
+    const guestRecord = (g as unknown as Guest) ?? null;
+    setGuest(guestRecord);
+    if (guestRecord) {
+      setForm(guestRecord);
+
+      // Find household members sharing household_id or phone in the same event
+      const { data: allEventGuests } = await supabase
+        .from("guests")
+        .select("*")
+        .eq("event_id", guestRecord.event_id);
+      const peers = ((allEventGuests as unknown as Guest[]) ?? []).filter(
+        (other) =>
+          other.id !== guestRecord.id &&
+          ((guestRecord.household_id && other.household_id === guestRecord.household_id) ||
+            (guestRecord.phone && other.phone === guestRecord.phone)),
+      );
+      setHouseholdPeers(peers);
+    }
+
     const { data: h } = await supabase
       .from("guest_edits")
       .select("*")
       .eq("guest_id", id)
       .order("edited_at", { ascending: false });
-    setHistory((h as GuestEdit[]) ?? []);
+    setHistory((h as unknown as GuestEdit[]) ?? []);
+
     const { data: ps } = await supabase.from("profiles").select("*");
     const map: Record<string, Profile> = {};
-    ((ps as Profile[]) ?? []).forEach((p) => (map[p.id] = p));
+    ((ps as unknown as Profile[]) ?? []).forEach((p) => {
+      map[p.id] = p;
+    });
     setProfiles(map);
   };
 
@@ -43,12 +91,8 @@ function GuestDetail() {
     load();
     const channel = supabase
       .channel("guest-" + id)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "guests", filter: `id=eq.${id}` }, (payload) => {
-        const updated = payload.new as Guest;
-        toast.info(`This guest was just updated by another registrar`);
-        load();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "guest_edits", filter: `guest_id=eq.${id}` }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "guests" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "guest_edits" }, () => load())
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -56,7 +100,19 @@ function GuestDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const save = async () => {
+  const guestEvent = events.find((e) => e.id === guest?.event_id) ?? selected;
+  const totalDays = guestEvent?.total_days || 3;
+  const dayOptions = Array.from({ length: totalDays }, (_, i) => i + 1);
+
+  const handleCopyUuid = () => {
+    if (!guest) return;
+    navigator.clipboard.writeText(guest.id);
+    setCopiedUuid(true);
+    toast.success("UUID copied to clipboard");
+    setTimeout(() => setCopiedUuid(false), 1800);
+  };
+
+  const toggleDayCheckIn = async (dayNum: number) => {
     if (!user || !guest) return;
     setError("");
     setSaving(true);
